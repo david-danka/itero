@@ -51,6 +51,56 @@ class Polygon:
     @property
     def closed(self) -> bool:
         return self.points[0].coincides_with(self.points[-1])
+    
+    def area(self) -> float:
+        """Calculate area
+
+        Calculate the area of closed polygon according to the shoelace formula.
+        """
+        # Validation
+        if not self.closed:
+            raise ValueError("Polygon must be closed to calculate its area.")
+
+        # Initialization
+        sum_a = 0.0
+        n = len(self.points)
+
+        # Calculation
+        for i in range(n - 1):
+            x1, y1 = self.points[i].x, self.points[i].y
+            x2, y2 = self.points[i + 1].x, self.points[i + 1].y
+            sum_a += x1 * y2 - x2 * y1
+
+        return 0.5 * abs(sum_a)
+
+    
+    def centroid(self) -> Point:
+        """Calculate centroid
+
+        The centroid of a non-self-intersecting closed polygon.
+        """
+
+        # Validation
+        if not self.closed:
+            raise ValueError("Polygon must be closed to calculate its centroid.")
+        
+        # Initialization
+        A = self.area()
+        sum_x = 0.0
+        sum_y = 0.0
+        n = len(self.points)
+
+        for i in range(n - 1):
+            x1, y1 = self.points[i].x, self.points[i].y
+            x2, y2 = self.points[i + 1].x, self.points[i + 1].y
+            sum_x += (x1 + x2) * (x1 * y2 - x2 * y1)
+            sum_y += (y1 + y2) * (x1 * y2 - x2 * y1)
+
+        C_x = 1 / (6 * A) * sum_x
+        C_y = 1 / (6 * A) * sum_y
+
+        return Point(C_x, C_y)
+
 
     def __len__(self):
         """Return the number of points, including the closing point if present."""
