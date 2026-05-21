@@ -48,17 +48,17 @@ def transform_polygon(polygon: Polygon, t: float) -> Polygon:
     
     # For closed polygons, the last point coincides with the first,
     # so we exclude it from the iteration count.
-    num_points = len(polygon) - 1 if polygon.closed else len(polygon)
+    num_vertices = len(polygon) - 1 if polygon.closed else len(polygon)
     
-    transformed_points = []
-    for i in range(num_points + 1):
-        p1 = polygon[i % num_points]
-        p2 = polygon[(i + 1) % num_points]
+    transformed_vertices = []
+    for i in range(num_vertices + 1):
+        p1 = polygon[i % num_vertices]
+        p2 = polygon[(i + 1) % num_vertices]
         new_x = (1 - t) * p1.x + t * p2.x
         new_y = (1 - t) * p1.y + t * p2.y
-        transformed_points.append(Point(new_x, new_y))
+        transformed_vertices.append(Point(new_x, new_y))
     
-    return Polygon(transformed_points)
+    return Polygon(transformed_vertices)
 
 
 def shrink_factor(n: int, t: float) -> float:

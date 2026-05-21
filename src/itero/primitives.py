@@ -36,21 +36,21 @@ class Polygon:
     """An ordered sequence of Points representing a polygon.
  
     Attributes:
-        points: Ordered list of vertices. For closed polygons, the first
+        vertices: Ordered list of Points. For closed polygons, the first
             point has to be repeated as the last.
     """
 
-    points: list[Point]
+    vertices: list[Point]
 
     def __post_init__(self):
-        if len(self.points) < 3:
+        if len(self.vertices) < 3:
             raise InvalidNumSidesError(
-                f"Polygon must have at least 3 points, got {len(self.points)}."
+                f"Polygon must have at least 3 vertices, got {len(self.vertices)}."
             )
     
     @property
     def closed(self) -> bool:
-        return self.points[0].coincides_with(self.points[-1])
+        return self.vertices[0].coincides_with(self.vertices[-1])
     
     def area(self) -> float:
         """Calculate area
@@ -63,12 +63,12 @@ class Polygon:
 
         # Initialization
         sum_a = 0.0
-        n = len(self.points)
+        n = len(self.vertices)
 
         # Calculation
         for i in range(n - 1):
-            x1, y1 = self.points[i].x, self.points[i].y
-            x2, y2 = self.points[i + 1].x, self.points[i + 1].y
+            x1, y1 = self.vertices[i].x, self.vertices[i].y
+            x2, y2 = self.vertices[i + 1].x, self.vertices[i + 1].y
             sum_a += x1 * y2 - x2 * y1
 
         return 0.5 * abs(sum_a)
@@ -88,11 +88,11 @@ class Polygon:
         A = self.area()
         sum_x = 0.0
         sum_y = 0.0
-        n = len(self.points)
+        n = len(self.vertices)
 
         for i in range(n - 1):
-            x1, y1 = self.points[i].x, self.points[i].y
-            x2, y2 = self.points[i + 1].x, self.points[i + 1].y
+            x1, y1 = self.vertices[i].x, self.vertices[i].y
+            x2, y2 = self.vertices[i + 1].x, self.vertices[i + 1].y
             sum_x += (x1 + x2) * (x1 * y2 - x2 * y1)
             sum_y += (y1 + y2) * (x1 * y2 - x2 * y1)
 
@@ -103,12 +103,12 @@ class Polygon:
 
 
     def __len__(self):
-        """Return the number of points, including the closing point if present."""
-        return len(self.points)
+        """Return the number of vertices, including the closing vertex if present."""
+        return len(self.vertices)
     
     def __iter__(self):
-        """Iterate over the polygon's points."""
-        return iter(self.points)
+        """Iterate over the polygon's vertices."""
+        return iter(self.vertices)
     
     def __getitem__(self, index: int) -> Point:
         """Return the point at the given index.
@@ -119,7 +119,7 @@ class Polygon:
         Returns:
             The Point at the specified index.
         """
-        return self.points[index]
+        return self.vertices[index]
     
     @classmethod
     def regular(
@@ -158,8 +158,8 @@ class Polygon:
         
         center = center or Point(0.0, 0.0)
 
-        # Include the first point to close the polygon
-        num_points = num_sides + 1 if closed else num_sides
+        # Include the first vertex to close the polygon
+        num_vertices = num_sides + 1 if closed else num_sides
         central_angle = 2 * math.pi / num_sides
 
         # Rotate the polygon for a more visually appealing orientation
@@ -168,39 +168,39 @@ class Polygon:
         else:
             init_angle = central_angle / 2 - math.pi / 2
         
-        points = []
-        for i in range(num_points):
+        vertices = []
+        for i in range(num_vertices):
             angle = init_angle + central_angle * i
             x = radius * math.cos(angle) + center.x
             y = radius * math.sin(angle) + center.y
-            points.append(Point(x, y))
+            vertices.append(Point(x, y))
 
-        return cls(points)
+        return cls(vertices)
 
     
     def x_coords(self) -> list[float]:
-        """Return the x-coordinates of all points.
+        """Return the x-coordinates of all vertices.
  
         Returns:
             A list of x values in vertex order.
         """
-        return [p.x for p in self.points]
+        return [p.x for p in self.vertices]
     
     def y_coords(self) -> list[float]:
-        """Return the y-coordinates of all points.
+        """Return the y-coordinates of all vertices.
  
         Returns:
             A list of y values in vertex order.
         """
-        return [p.y for p in self.points]
+        return [p.y for p in self.vertices]
     
     def coords(self) -> list[tuple]:
-        """Return the coordinates of all points.
+        """Return the coordinates of all vertices.
 
         Returns:
             A list of (x, y) in vertex order.
         """
-        return [(p.x, p.y) for p in self.points]
+        return [(p.x, p.y) for p in self.vertices]
 
 @dataclass
 class PolygonSequence:
