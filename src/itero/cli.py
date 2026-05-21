@@ -64,9 +64,18 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "-m", "--cmap",
+        type=str,
+        default=None,
+        metavar="CMAP",
+        help=(
+            "Colormap. Accepts any Matplotlib colormap string (e.g. 'viridis')."
+        ),
+    )
+    parser.add_argument(
         "-c", "--color",
         type=str,
-        default="blue",
+        default=None,
         metavar="COLOR",
         help="Line colour. Accepts any Matplotlib colour string (e.g. 'red', '#ff0000').",
     )
@@ -111,6 +120,18 @@ def cli() -> None:
             "otherwise no output is produced"
         )
     
+    if args.cmap and args.color:
+        parser.error(
+            "Either --cmap or --color "
+            "can be provided, not both."
+        )
+    
+    cmap = args.cmap
+    color = args.color
+
+    if cmap is None and color is None:
+        cmap = "viridis"
+    
     try:
         polygon = Polygon.regular(args.num_sides, closed=True)
         fig, ax = build_figure(tuple(args.figure_size))
@@ -136,7 +157,8 @@ def cli() -> None:
             polygons,
             fig=fig,
             ax=ax,
-            color=args.color,
+            cmap=cmap,
+            color=color,
             alpha=args.alpha,
             show=not args.no_show,
             save_path=args.save_path,

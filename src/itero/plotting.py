@@ -8,12 +8,17 @@ iterative transformation to be visualised as an overlapping series of shapes.
 
 import math
 
+from matplotlib import colormaps
 from matplotlib.pyplot import Figure, Axes
 from matplotlib.collections import LineCollection
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+import numpy as np
 
-from itero.exceptions import InvalidColorError, RenderingError, InvalidAlphaError, InvalidFigureSizeError
+from itero.exceptions import (
+    InvalidColorMapError, InvalidColorError, RenderingError,
+    InvalidAlphaError, InvalidFigureSizeError
+)
 from itero.primitives import PolygonSequence
 from itero.transforms import shrink_factor
 
@@ -22,6 +27,12 @@ def is_valid_matplotlib_color(color: str) -> bool:
     if isinstance(color, str) and color.lower() == "none":
         return False
     return mcolors.is_color_like(color)
+
+
+def is_valid_matplotlib_cmap(cmap: str) -> bool:
+    if isinstance(cmap, str) and cmap.lower() == "none":
+        return False
+    return cmap in colormaps
 
 
 def required_iterations(n: int, t: float, fig: Figure, ax: Axes, linewidth: float = 1.5) -> int:
@@ -64,11 +75,10 @@ def build_figure(figure_size: tuple[int, int]) -> tuple[Figure, Axes]:
 
 
 def draw_polygons(
-    polygons: PolygonSequence,
-    fig: Figure,
-    ax: Axes,
-    color: str,
-    alpha: float,
+    polygons: PolygonSequence, fig: Figure, ax: Axes,
+    cmap: str | None = None,
+    color: str | None = None,
+    alpha: float = 1.0,
     show: bool = True,
     save_path: str | None = None,
 ) -> None:
@@ -100,14 +110,47 @@ def draw_polygons(
         >>> plot_polygons(sequence, figure_size=(8, 8), color='indigo', alpha=0.15)
     """
 
-    if not is_valid_matplotlib_color(color):
+    if color is not None and not is_valid_matplotlib_color(color):
         raise InvalidColorError(f"'{color}' is not a valid Matplotlib color.")
+    if cmap is not None and not is_valid_matplotlib_cmap(cmap):
+        raise InvalidColorMapError(f"'{cmap}' is not a valid Matplotlib colormap.")
     if not (0.0 <= alpha <= 1.0):
         raise InvalidAlphaError(f"Alpha must be between 0.0 and 1.0, got {alpha}.")
 
     fig.canvas.manager.set_window_title("Polygon sequence plot")
 
-    collection = LineCollection(polygons.to_list(), color=color, alpha=alpha)
+    if color is not None:
+        collection = LineCollection(
+            polygons.to_list(), color=color, alpha=alpha
+        )
+    else:
+        # Maps colors based on polygon distance from center
+        distances = []
+        center = polygons.polygons[0].centroid()
+
+        for poly in polygons:
+            p = poly[0]  # pick representative vertex
+            dx = p.x - center.x
+            dy = p.y - center.y
+            distances.append(math.hypot(dx, dy))
+        
+        # Normalization step
+        distances = np.array(distances)
+
+        normalized = (
+            distances - distances.min()
+        ) / (
+            distances.max() - distances.min()
+        )
+        cmap_obj = colormaps.get_cmap(cmap)
+        colors = cmap_obj(1 - normalized)
+
+        collection = LineCollection(
+            polygons.to_list(),
+            colors=colors,
+            alpha=alpha
+        )
+    
     ax.add_collection(collection)
     ax.autoscale()
 
