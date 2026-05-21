@@ -36,8 +36,7 @@ class Polygon:
     """An ordered sequence of Points representing a polygon.
  
     Attributes:
-        vertices: Ordered list of Points. For closed polygons, the first
-            point has to be repeated as the last.
+        vertices: Ordered list of Points.
     """
 
     vertices: list[Point]
@@ -48,27 +47,22 @@ class Polygon:
                 f"Polygon must have at least 3 vertices, got {len(self.vertices)}."
             )
     
-    @property
-    def closed(self) -> bool:
-        return self.vertices[0].coincides_with(self.vertices[-1])
-    
     def area(self) -> float:
         """Calculate area
 
         Calculate the area of closed polygon according to the shoelace formula.
         """
-        # Validation
-        if not self.closed:
-            raise ValueError("Polygon must be closed to calculate its area.")
 
         # Initialization
         sum_a = 0.0
         n = len(self.vertices)
 
         # Calculation
-        for i in range(n - 1):
-            x1, y1 = self.vertices[i].x, self.vertices[i].y
-            x2, y2 = self.vertices[i + 1].x, self.vertices[i + 1].y
+        for i in range(n):
+            x1 = self.vertices[i].x
+            y1 = self.vertices[i].y
+            x2 = self.vertices[(i + 1) % n].x
+            y2 = self.vertices[(i + 1) % n].y
             sum_a += x1 * y2 - x2 * y1
 
         return 0.5 * abs(sum_a)
@@ -77,12 +71,8 @@ class Polygon:
     def centroid(self) -> Point:
         """Calculate centroid
 
-        The centroid of a non-self-intersecting closed polygon.
+        The centroid of a non-self-intersecting polygon.
         """
-
-        # Validation
-        if not self.closed:
-            raise ValueError("Polygon must be closed to calculate its centroid.")
         
         # Initialization
         A = self.area()
@@ -90,9 +80,11 @@ class Polygon:
         sum_y = 0.0
         n = len(self.vertices)
 
-        for i in range(n - 1):
-            x1, y1 = self.vertices[i].x, self.vertices[i].y
-            x2, y2 = self.vertices[i + 1].x, self.vertices[i + 1].y
+        for i in range(n):
+            x1 = self.vertices[i].x
+            y1 = self.vertices[i].y
+            x2 = self.vertices[(i + 1) % n].x
+            y2 = self.vertices[(i + 1) % n].y
             sum_x += (x1 + x2) * (x1 * y2 - x2 * y1)
             sum_y += (y1 + y2) * (x1 * y2 - x2 * y1)
 
@@ -103,7 +95,7 @@ class Polygon:
 
 
     def __len__(self):
-        """Return the number of vertices, including the closing vertex if present."""
+        """Return the number of vertices"""
         return len(self.vertices)
     
     def __iter__(self):
@@ -111,13 +103,13 @@ class Polygon:
         return iter(self.vertices)
     
     def __getitem__(self, index: int) -> Point:
-        """Return the point at the given index.
+        """Return the vertex at the given index.
  
         Args:
-            index: Position of the desired point. Supports negative indexing.
+            index: Position of the desired vertex. Supports negative indexing.
  
         Returns:
-            The Point at the specified index.
+            The Polygons vertex at the specified index.
         """
         return self.vertices[index]
     
@@ -127,7 +119,6 @@ class Polygon:
         num_sides: int,
         radius: float = 1.0,
         center: Point | None = None,
-        closed: bool = True
     ) -> "Polygon":
         """Construct a regular polygon inscribed in a circle.
  
@@ -140,8 +131,6 @@ class Polygon:
                 Must be greater than or equal to 3.
             radius: Radius of the circumscribed circle. Defaults to 1.0.
             center: Centre point of the polygon. Defaults to the origin (0, 0).
-            closed: Whether to close the polygon by repeating the first vertex
-                at the end. Defaults to True.
  
         Returns:
             A Polygon instance with evenly spaced vertices.
@@ -157,9 +146,6 @@ class Polygon:
             )
         
         center = center or Point(0.0, 0.0)
-
-        # Include the first vertex to close the polygon
-        num_vertices = num_sides + 1 if closed else num_sides
         central_angle = 2 * math.pi / num_sides
 
         # Rotate the polygon for a more visually appealing orientation
@@ -169,7 +155,7 @@ class Polygon:
             init_angle = central_angle / 2 - math.pi / 2
         
         vertices = []
-        for i in range(num_vertices):
+        for i in range(num_sides):
             angle = init_angle + central_angle * i
             x = radius * math.cos(angle) + center.x
             y = radius * math.sin(angle) + center.y

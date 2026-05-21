@@ -133,7 +133,7 @@ def cli() -> None:
         cmap = "viridis"
     
     try:
-        polygon = Polygon.regular(args.num_sides, closed=True)
+        polygon = Polygon.regular(args.num_sides)
         fig, ax = build_figure(tuple(args.figure_size))
     
         if args.iterations is None:

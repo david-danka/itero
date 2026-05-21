@@ -19,7 +19,7 @@ from itero.exceptions import (
     InvalidColorMapError, InvalidColorError, RenderingError,
     InvalidAlphaError, InvalidFigureSizeError
 )
-from itero.primitives import PolygonSequence
+from itero.primitives import PolygonSequence, Polygon
 from itero.transforms import shrink_factor
 
 
@@ -73,6 +73,24 @@ def build_figure(figure_size: tuple[int, int]) -> tuple[Figure, Axes]:
     ax.axis("off")
     return fig, ax
 
+def polygon_to_line(poly: Polygon) -> list[tuple[float, float]]:
+    """Convert a polygon to a closed polyline for plotting
+
+    Generate closed line chain based on the Polygon vertices to plot
+    the Polygon as closed by duplicating the first vertex as the last.
+    """
+
+    pts = poly.coords()
+
+    # Close only for visualization
+    first = poly.vertices[0]
+    last = poly.vertices[-1]
+
+    if not first.coincides_with(last):
+        pts.append((first.x, first.y))
+    
+    return pts
+
 
 def draw_polygons(
     polygons: PolygonSequence, fig: Figure, ax: Axes,
@@ -119,9 +137,10 @@ def draw_polygons(
 
     fig.canvas.manager.set_window_title("Polygon sequence plot")
 
+    closed_line_chains = [polygon_to_line(p) for p in polygons]
     if color is not None:
         collection = LineCollection(
-            polygons.to_list(), color=color, alpha=alpha
+            closed_line_chains, color=color, alpha=alpha
         )
     else:
         # Maps colors based on polygon distance from center
@@ -146,7 +165,7 @@ def draw_polygons(
         colors = cmap_obj(1 - normalized)
 
         collection = LineCollection(
-            polygons.to_list(),
+            closed_line_chains,
             colors=colors,
             alpha=alpha
         )

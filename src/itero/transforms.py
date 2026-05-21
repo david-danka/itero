@@ -25,10 +25,6 @@ def transform_polygon(polygon: Polygon, t: float) -> Polygon:
     that follows it. The overall shape is a rotated and scaled version
     of the original.
  
-    For closed polygons, the closing point is excluded from the vertex
-    count during iteration and then re-added, preserving the closed
-    invariant in the output.
- 
     Args:
         polygon: The source polygon to transform. May be open or closed.
         t: Interpolation ratio controlling how far each vertex moves
@@ -46,14 +42,12 @@ def transform_polygon(polygon: Polygon, t: float) -> Polygon:
     if not (0.0 < t < 1.0):
         raise InvalidRatioError(f"Ratio must be between 0.0 and 1.0 (exclusive), got {t}.")
     
-    # For closed polygons, the last point coincides with the first,
-    # so we exclude it from the iteration count.
-    num_vertices = len(polygon) - 1 if polygon.closed else len(polygon)
+    n = len(polygon.vertices)
     
     transformed_vertices = []
-    for i in range(num_vertices + 1):
-        p1 = polygon[i % num_vertices]
-        p2 = polygon[(i + 1) % num_vertices]
+    for i in range(n):
+        p1 = polygon[i % n]
+        p2 = polygon[(i + 1) % n]
         new_x = (1 - t) * p1.x + t * p2.x
         new_y = (1 - t) * p1.y + t * p2.y
         transformed_vertices.append(Point(new_x, new_y))
