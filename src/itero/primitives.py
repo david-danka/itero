@@ -47,10 +47,15 @@ class Polygon:
                 f"Polygon must have at least 3 vertices, got {len(self.vertices)}."
             )
     
-    def area(self) -> float:
-        """Calculate area
+    def area(self):
+        """Calculate are of polygon"""
+        return abs(self._signed_area())
+    
+    def _signed_area(self) -> float:
+        """Calculate signed area.
 
-        Calculate the area of closed polygon according to the shoelace formula.
+        Calculate the signed area of the closed polygon 
+        according to the shoelace formula.
         """
 
         # Initialization
@@ -65,7 +70,7 @@ class Polygon:
             y2 = self.vertices[(i + 1) % n].y
             sum_a += x1 * y2 - x2 * y1
 
-        return 0.5 * abs(sum_a)
+        return 0.5 * sum_a
 
     
     def centroid(self) -> Point:
@@ -75,7 +80,7 @@ class Polygon:
         """
         
         # Initialization
-        A = self.area()
+        A = self._signed_area()
         sum_x = 0.0
         sum_y = 0.0
         n = len(self.vertices)
