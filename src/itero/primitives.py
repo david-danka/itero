@@ -144,7 +144,7 @@ class Polygon:
             >>> triangle = Polygon.regular(3)
             >>> hexagon = Polygon.regular(6, radius=2.0, center=Point(1.0, 1.0))
         """
-        if num_sides < 3:
+        if not isinstance(num_sides, int) or num_sides < 3:
             raise InvalidNumSidesError(
                 f"Number of sides must be a whole number"
                 f" greater than or equal to 3, got {num_sides}."
