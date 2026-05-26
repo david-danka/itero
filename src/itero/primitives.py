@@ -154,10 +154,7 @@ class Polygon:
         central_angle = 2 * math.pi / num_sides
 
         # Rotate the polygon for a more visually appealing orientation
-        if num_sides % 2 == 0:
-            init_angle = central_angle / 2
-        else:
-            init_angle = central_angle / 2 - math.pi / 2
+        init_angle = (math.pi / num_sides) - (math.pi / 2)
         
         vertices = []
         for i in range(num_sides):
