@@ -1,77 +1,33 @@
-from hypothesis import given, strategies as st
+from hypothesis import given
 import pytest
 
-from itero.primitives import Point, Polygon
+from itero.primitives import Polygon
 from itero.transforms import transform_polygon, shrink_factor
-
-
-finite_t = st.floats(
-    min_value=1e-6,
-    max_value=1 - 1e-6,
-    allow_nan=False,
-    allow_infinity=False,
-)
-
-finite_iterations = st.integers(
-    min_value=0,
-    max_value=50,
-)
-
-finite_num_sides = st.integers(
-    min_value=3,
-    max_value=20,
-)
-
-finite_radius = st.floats(
-    min_value=0.1,
-    max_value=100.0,
-    allow_nan=False,
-    allow_infinity=False,
-    width=64,
-)
-
-finite_float = st.floats(
-    min_value=-100.0,
-    max_value=100.0,
-    allow_nan=False,
-    allow_infinity=False,
-    width=64,
-)
-
-point_strategy = st.builds(
-    Point,
-    x=finite_float,
-    y=finite_float,
-)
-
-polygon_strategy = st.builds(
-    Polygon.regular,
-    num_sides=finite_num_sides,
-    radius=finite_radius,
-    center=point_strategy,
-)
-
-translation_strategy = st.builds(
-    Point,
-    x=finite_float,
-    y=finite_float,
+from tests.helpers import translate_polygon
+from tests.strategies import(
+    num_sides_st,
+    radius_st,
+    ratio_st,
+    point_st,
+    regular_polygon_st,
+    translation_st,
 )
 
 
-@given(polygon_strategy, finite_t)
-def test_transform_preserves_num_vertices(poly, t):
-    transformed = transform_polygon(poly, t)
+@given(regular_polygon_st, ratio_st)
+def test_transform_preserves_num_vertices(polygon, ratio):
+    transformed = transform_polygon(polygon, ratio)
 
-    assert len(transformed) == len(poly)
+    assert len(transformed) == len(polygon)
 
 
-@given(polygon_strategy)
-def test_transform_near_zero_behaves_like_identity(poly):
+@given(regular_polygon_st)
+def test_transform_near_zero_behaves_like_identity(polygon):
     t = 1e-12
 
-    transformed = transform_polygon(poly, t)
+    transformed = transform_polygon(polygon, t)
 
-    for p1, p2 in zip(poly, transformed):
+    for p1, p2 in zip(polygon, transformed):
         assert p1.coincides_with(
             p2,
             rel_tol=1e-8,
@@ -79,65 +35,50 @@ def test_transform_near_zero_behaves_like_identity(poly):
         )
 
 
-@given(polygon_strategy, finite_t)
-def test_transform_preserves_centroid(poly, t):
-    transformed = transform_polygon(poly, t)
+@given(regular_polygon_st, ratio_st)
+def test_transform_preserves_centroid(polygon, ratio):
+    transformed = transform_polygon(polygon, ratio)
 
-    assert transformed.centroid().coincides_with(
-        poly.centroid()
-    )
+    assert transformed.centroid().coincides_with(polygon.centroid())
 
 
-@given(polygon_strategy, translation_strategy, finite_t)
-def test_transform_translation_invariance(poly, delta, t):
-    moved = Polygon([
-        Point(
-            p.x + delta.x,
-            p.y + delta.y,
-        )
-        for p in poly
-    ])
+@given(regular_polygon_st, translation_st, ratio_st)
+def test_transform_translation_invariance(polygon, delta, ratio):
+    moved = translate_polygon(polygon, delta)
 
-    transformed_original = transform_polygon(poly, t)
-    transformed_moved = transform_polygon(moved, t)
+    transformed_original = transform_polygon(polygon, ratio)
+    transformed_moved = transform_polygon(moved, ratio)
 
-    expected = Polygon([
-        Point(
-            p.x + delta.x,
-            p.y + delta.y,
-        )
-        for p in transformed_original
-    ])
+    expected = translate_polygon(transformed_original, delta)
 
-    for p1, p2 in zip(
-        transformed_moved,
-        expected,
-    ):
+    for p1, p2 in zip(transformed_moved, expected):
         assert p1.coincides_with(p2)
 
 
-@given(finite_num_sides, finite_radius, point_strategy, finite_t)
-def test_regular_polygon_area_shrinks_correctly(n, radius, center, t):
-    poly = Polygon.regular(n, radius, center)
+@given(num_sides_st, radius_st, point_st, ratio_st)
+def test_regular_polygon_area_shrinks_correctly(
+    num_sides, radius, center, ratio
+):
+    polygon = Polygon.regular(num_sides, radius, center)
 
-    transformed = transform_polygon(poly, t)
+    transformed = transform_polygon(polygon, ratio)
 
-    expected_factor = shrink_factor(n, t)
+    expected_factor = shrink_factor(num_sides, ratio)
 
     assert transformed.area() == pytest.approx(
-        poly.area() * expected_factor**2,
+        polygon.area() * expected_factor**2,
         rel=1e-6,
     )
 
-@given(polygon_strategy, finite_t)
-def test_transformed_vertex_between_neighbors(poly, t):
+@given(regular_polygon_st, ratio_st)
+def test_transformed_vertex_between_neighbors(polygon, ratio):
     """Check if p lies on segment p1->p2 via parametric form."""
-    transformed = transform_polygon(poly, t)
-    n = len(poly)
+    transformed = transform_polygon(polygon, ratio)
+    n = len(polygon)
 
     for i in range(n):
-        p1 = poly[i]
-        p2 = poly[(i + 1) % n]
+        p1 = polygon[i]
+        p2 = polygon[(i + 1) % n]
         p_new = transformed[i]
 
         assert min(p1.x, p2.x) <= p_new.x <= max(p1.x, p2.x)

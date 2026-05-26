@@ -1,55 +1,19 @@
 import math
 
-from hypothesis import given, strategies as st
+from hypothesis import given
 import pytest
 
 from itero.primitives import Point, Polygon
 from itero.exceptions import InvalidNumSidesError
+from tests.helpers import translate_polygon, reverse_polygon, scale_polygon
+from tests.strategies import (
+    num_sides_st,
+    radius_st,
+    point_st,
+    regular_polygon_st,
+    translation_st,
+    scale_st,
 
-
-finite_num_sides = st.integers(
-    min_value=3,
-    max_value=20,
-)
-
-finite_radius = st.floats(
-    min_value=0.1,
-    max_value=100.0,
-    allow_nan=False,
-    allow_infinity=False,
-    width=64,
-)
-
-finite_float = st.floats(
-    min_value=-100.0,
-    max_value=100.0,
-    allow_nan=False,
-    allow_infinity=False,
-    width=64,
-)
-
-point_strategy = st.builds(
-    Point,
-    x=finite_float,
-    y=finite_float,
-)
-
-polygon_strategy = st.builds(
-    Polygon.regular,
-    num_sides=finite_num_sides,
-    radius=finite_radius,
-    center=point_strategy,
-)
-
-translation_strategy = st.builds(
-    Point,
-    x=finite_float,
-    y=finite_float,
-)
-
-positive_scale = st.floats(
-    min_value=1e-2,
-    max_value=100,
 )
 
 
@@ -61,133 +25,102 @@ class TestPolygonValidation:
                 Point(1, 1)
             ])
     
-    @given(polygon_strategy)
-    def test_polygon_accepts_at_least_three_vertices(self, poly):
-        assert len(poly.vertices) >= 3
+    @given(regular_polygon_st)
+    def test_polygon_accepts_at_least_three_vertices(self, polygon):
+        assert len(polygon.vertices) >= 3
 
 class TestPolygonArea:
     def test_triangle_area(self):
-        poly = Polygon([
+        polygon = Polygon([
             Point(0, 0),
             Point(4, 0),
             Point(0, 3),
         ])
 
-        assert poly.area() == pytest.approx(6.0)
+        assert polygon.area() == pytest.approx(6.0)
 
     def test_square_area(self):
-        poly = Polygon([
+        polygon = Polygon([
             Point(0, 0),
             Point(2, 0),
             Point(2, 2),
             Point(0, 2),
         ])
 
-        assert poly.area() == pytest.approx(4.0)
+        assert polygon.area() == pytest.approx(4.0)
     
-    @given(polygon_strategy)
-    def test_polygon_non_negative_area(self, poly):
-        assert poly.area() >= 0
+    @given(regular_polygon_st)
+    def test_polygon_non_negative_area(self, polygon):
+        assert polygon.area() >= 0
 
-    @given(polygon_strategy)
-    def test_area_independent_of_vertex_order(self, poly):
-        reversed_poly = Polygon(
-            list(reversed(poly.vertices))
-        )
+    @given(regular_polygon_st)
+    def test_area_independent_of_vertex_order(self, polygon):
+        reversed_polygon = reverse_polygon(polygon)
 
-        assert poly.area() == pytest.approx(
-            reversed_poly.area()
-        )
+        assert polygon.area() == pytest.approx(reversed_polygon.area())
     
-    @given(polygon_strategy)
-    def test_signed_area_changes_sign(self, poly):
-        reversed_poly = Polygon(
-            list(reversed(poly.vertices))
+    @given(regular_polygon_st)
+    def test_signed_area_changes_sign(self, polygon):
+        reversed_polygon = reverse_polygon(polygon)
+
+        assert polygon._signed_area() == pytest.approx(
+            -reversed_polygon._signed_area()
         )
 
-        assert poly._signed_area() == pytest.approx(
-            -reversed_poly._signed_area()
-        )
-
-    @given(polygon_strategy, translation_strategy)
-    def test_area_translation_invariance(self, poly, delta):
-        moved = Polygon([
-            Point(
-                p.x + delta.x,
-                p.y + delta.y,
-            )
-            for p in poly.vertices
-        ])
+    @given(regular_polygon_st, translation_st)
+    def test_area_translation_invariance(self, polygon, delta):
+        moved = translate_polygon(polygon, delta)
     
-        assert moved.area() == pytest.approx(
-            poly.area()
-        )
+        assert moved.area() == pytest.approx(polygon.area())
     
-    @given(polygon_strategy, positive_scale)
-    def test_area_scales_quadratically(self, poly, scale):
-        scaled = Polygon([
-            Point(
-                p.x * scale,
-                p.y * scale,
-            )
-            for p in poly
-        ])
+    @given(regular_polygon_st, scale_st)
+    def test_area_scales_quadratically(self, polygon, scale):
+        scaled = scale_polygon(polygon, scale)
 
-        assert scaled.area() == pytest.approx(
-            poly.area() * scale ** 2
-        )
+        assert scaled.area() == pytest.approx(polygon.area() * scale ** 2)
 
 class TestPolygonCentroid:
 
     def test_triangle_centroid(self):
-        poly = Polygon([
+        polygon = Polygon([
             Point(0, 0),
             Point(6, 0),
             Point(0, 6),
         ])
 
-        c = poly.centroid()
+        c = polygon.centroid()
 
         assert c.x == pytest.approx(2)
         assert c.y == pytest.approx(2)
 
     def test_square_centroid(self):
-        poly = Polygon([
+        polygon = Polygon([
             Point(0, 0),
             Point(2, 0),
             Point(2, 2),
             Point(0, 2),
         ])
 
-        c = poly.centroid()
+        c = polygon.centroid()
 
         assert c.x == pytest.approx(1)
         assert c.y == pytest.approx(1)
 
-    @given(polygon_strategy)
-    def test_centroid_independent_of_orientation(self, poly):
-        reversed_poly = Polygon(
-            list(reversed(poly.vertices))
-        )
+    @given(regular_polygon_st)
+    def test_centroid_independent_of_orientation(self, polygon):
+        reversed_polygon = reverse_polygon(polygon)
         
-        c1 = poly.centroid()
-        c2 = reversed_poly.centroid()
+        c1 = polygon.centroid()
+        c2 = reversed_polygon.centroid()
 
         assert c1.coincides_with(c2)
     
-    @given(polygon_strategy, translation_strategy)
-    def test_centroid_translation_invariance(self, poly, delta):
-        moved = Polygon([
-            Point(
-                p.x + delta.x,
-                p.y + delta.y,
-            )
-            for p in poly.vertices
-        ])
-    
+    @given(regular_polygon_st, translation_st)
+    def test_centroid_translation_invariance(self, polygon, delta):
+        moved = translate_polygon(polygon, delta)
         moved_centroid = moved.centroid()
-        centroid = poly.centroid()
 
+        centroid = polygon.centroid()
         expected = Point(
             centroid.x + delta.x,
             centroid.y + delta.y,
@@ -195,17 +128,11 @@ class TestPolygonCentroid:
 
         assert moved_centroid.coincides_with(expected)
     
-    @given(polygon_strategy, positive_scale)
-    def test_centroid_scales_linearly(self, poly, scale):
-        scaled = Polygon([
-            Point(
-                p.x * scale,
-                p.y * scale,
-            )
-            for p in poly
-        ])
+    @given(regular_polygon_st, scale_st)
+    def test_centroid_scales_linearly(self, polygon, scale):
+        scaled = scale_polygon(polygon, scale)
 
-        c1 = poly.centroid()
+        c1 = polygon.centroid()
         c2 = scaled.centroid()
 
         assert c2.x == pytest.approx(c1.x * scale)
@@ -214,37 +141,39 @@ class TestPolygonCentroid:
 
 class TestRegularPolygon:
 
-    @given(finite_num_sides, finite_radius, point_strategy)
-    def test_regular_polygon_centroid_at_center(self, num_sides, radius, center):
-        poly = Polygon.regular(
+    @given(num_sides_st, radius_st, point_st)
+    def test_regular_polygon_centroid_at_center(
+        self, num_sides, radius, center
+    ):
+        polygon = Polygon.regular(
             num_sides=num_sides,
             radius=radius,
-            center=center
+            center=center,
         )
 
-        centroid = poly.centroid()
+        centroid = polygon.centroid()
 
         assert centroid.coincides_with(center)
 
-    @given(finite_num_sides, finite_radius, point_strategy)
+    @given(num_sides_st, radius_st, point_st)
     def test_regular_polygon_num_vertices(self, num_sides, radius, center):
-        poly = Polygon.regular(
+        polygon = Polygon.regular(
             num_sides=num_sides,
             radius=radius,
-            center=center
+            center=center,
         )
 
-        assert len(poly.vertices) == num_sides
+        assert len(polygon.vertices) == num_sides
 
-    @given(finite_num_sides, finite_radius, point_strategy)
+    @given(num_sides_st, radius_st, point_st)
     def test_regular_polygon_vertices_on_circle(self, num_sides, radius, center):
-        poly = Polygon.regular(
+        polygon = Polygon.regular(
             num_sides=num_sides,
             radius=radius,
             center=center
         )
 
-        for p in poly.vertices:
+        for p in polygon.vertices:
             r = math.hypot(p.x - center.x, p.y - center.y)
 
             assert r == pytest.approx(radius)
@@ -263,24 +192,24 @@ class TestPolygonProtocols:
             Point(0, 1),
         ]
 
-        poly = Polygon(vertices)
+        polygon = Polygon(vertices)
 
-        assert list(poly) == vertices
+        assert list(polygon) == vertices
 
     def test_polygon_supports_indexing(self):
-        poly = Polygon([
+        polygon = Polygon([
             Point(0, 0),
             Point(1, 0),
             Point(0, 1),
         ])
 
-        assert poly[1] == Point(1, 0)
+        assert polygon[1] == Point(1, 0)
 
     def test_polygon_supports_negative_indexing(self):
-        poly = Polygon([
+        polygon = Polygon([
             Point(0, 0),
             Point(1, 0),
             Point(0, 1),
         ])
 
-        assert poly[-1] == Point(0, 1)
+        assert polygon[-1] == Point(0, 1)

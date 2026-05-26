@@ -1,31 +1,16 @@
 import math
 
-from hypothesis import given, strategies as st
+from hypothesis import given
 
 from itero.primitives import Point
-
-
-finite_float = st.floats(
-    min_value=-1e6,
-    max_value=1e6,
-    allow_nan=False,
-    allow_infinity=False,
-    width=64,
-)
-
-point_strategy = st.builds(
-    Point,
-    x=finite_float,
-    y=finite_float,
-)
-
-tolerance_strategy = st.tuples(
-    st.floats(min_value=0, max_value=1e-3),
-    st.floats(min_value=0, max_value=1e-3)
+from tests.strategies import (
+    coordinate_st,
+    point_st,
+    tolerance_st,
 )
 
 
-@given(finite_float, finite_float, tolerance_strategy)
+@given(coordinate_st, coordinate_st, tolerance_st)
 def test_point_coincides_exact(x, y, tolerances):
     p1 = Point(x, y)
     p2 = Point(x, y)
@@ -35,7 +20,7 @@ def test_point_coincides_exact(x, y, tolerances):
     )
 
 
-@given(point_strategy, tolerance_strategy)
+@given(point_st, tolerance_st)
 def test_point_coincides_within_tolerance(point, tolerances):
     rel_tol, abs_tol = tolerances
 
@@ -60,44 +45,28 @@ def test_point_coincides_within_tolerance(point, tolerances):
     )
 
 
-@given(point_strategy, tolerance_strategy)
-def test_point_does_not_coincide_outside_tolerance(
-    point,
-    tolerances,
-):
+@given(point_st, tolerance_st)
+def test_point_does_not_coincide_outside_tolerance(point, tolerances):
     rel_tol, abs_tol = tolerances
 
     def perturb(value):
-        threshold = max(
-            rel_tol * abs(value),
-            abs_tol,
-        )
+        threshold = max(rel_tol * abs(value), abs_tol)
 
         # move strictly beyond tolerance
         target = value + threshold * 2
 
         # guarantee representably different float
         while target == value:
-            target = math.nextafter(
-                target,
-                math.inf,
-            )
+            target = math.nextafter(target, math.inf)
 
         return target
 
-    other = Point(
-        perturb(point.x),
-        perturb(point.y),
-    )
+    other = Point(perturb(point.x), perturb(point.y))
 
-    assert not point.coincides_with(
-        other,
-        rel_tol=rel_tol,
-        abs_tol=abs_tol,
-    )
+    assert not point.coincides_with(other, rel_tol=rel_tol, abs_tol=abs_tol)
 
 
-@given(point_strategy, tolerance_strategy)
+@given(point_st, tolerance_st)
 def test_point_reflexive(point, tolerances):
     assert point.coincides_with(
         other=point,
@@ -106,7 +75,7 @@ def test_point_reflexive(point, tolerances):
     )
 
 
-@given(point_strategy, point_strategy, tolerance_strategy)
+@given(point_st, point_st, tolerance_st)
 def test_point_symmetry(p1, p2, tolerances):
     assert (
         p1.coincides_with(
@@ -121,7 +90,7 @@ def test_point_symmetry(p1, p2, tolerances):
         )
     )
 
-@given(point_strategy, point_strategy)
+@given(point_st, point_st)
 def test_monotonic_in_tolerance(p1, p2):
     # If coincides under stricter condition, 
     # it must coincide under looser condition
