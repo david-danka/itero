@@ -79,6 +79,9 @@ def draw_polygons(
 
     fig.canvas.manager.set_window_title("Polygon sequence plot")
 
+    if cmap is None and color is None:
+        cmap = "viridis"
+
     closed_line_chains = [polygon_to_line(p) for p in polygons]
     if color is not None:
         collection = LineCollection(

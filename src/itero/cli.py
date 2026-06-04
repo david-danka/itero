@@ -124,12 +124,6 @@ def cli() -> None:
             "can be provided, not both."
         )
     
-    cmap = args.cmap
-    color = args.color
-
-    if cmap is None and color is None:
-        cmap = "viridis"
-    
     try:
         plot_polygons(
             num_sides=args.num_sides,
