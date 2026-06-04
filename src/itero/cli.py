@@ -13,9 +13,7 @@ import argparse
 import sys
 
 from itero.exceptions import PolygonIterError
-from itero.primitives import Polygon
-from itero.transforms import iterate_polygon
-from itero.plotting import build_figure, required_iterations, draw_polygons
+from itero.api import plot_polygons
 
 
 MAX_ITERATIONS = 10_000
@@ -133,35 +131,16 @@ def cli() -> None:
         cmap = "viridis"
     
     try:
-        polygon = Polygon.regular(args.num_sides)
-        fig, ax = build_figure(tuple(args.figure_size))
-    
-        if args.iterations is None:
-            iterations = required_iterations(
-                n=args.num_sides,
-                t=args.ratio,
-                fig=fig,
-                ax=ax,
-                linewidth=1.5
-            )
-        else:
-            iterations = args.iterations
-    
-        polygons = iterate_polygon(
-            polygon,
-            t=args.ratio,
-            iterations=iterations,
-        )
-
-        draw_polygons(
-            polygons,
-            fig=fig,
-            ax=ax,
-            cmap=cmap,
-            color=color,
+        plot_polygons(
+            num_sides=args.num_sides,
+            ratio=args.ratio,
+            iterations=args.iterations,
+            figure_size=args.figure_size,
+            cmap=args.cmap,
+            color=args.color,
             alpha=args.alpha,
             show=not args.no_show,
-            save_path=args.save_path,
+            save_path=args.save_path
         )
 
     except PolygonIterError as e:

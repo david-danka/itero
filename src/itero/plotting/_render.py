@@ -6,61 +6,21 @@ Each polygon in the sequence is drawn as a separate line, allowing the full
 iterative transformation to be visualised as an overlapping series of shapes.
 """
 
-import math
-
-from matplotlib import colormaps
-from matplotlib.pyplot import Figure, Axes
-from matplotlib.collections import LineCollection
 import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
-import numpy as np
+from matplotlib.collections import LineCollection
+from matplotlib.pyplot import Axes, Figure
 
+from itero.core import PolygonSequence
 from itero.exceptions import (
-    InvalidColorMapError, InvalidColorError, RenderingError,
-    InvalidAlphaError, InvalidFigureSizeError
+    InvalidAlphaError,
+    InvalidColorError,
+    InvalidColorMapError,
+    InvalidFigureSizeError,
+    RenderingError,
 )
-from itero.primitives import PolygonSequence, Polygon
-from itero.transforms import shrink_factor
-
-
-def is_valid_matplotlib_color(color: str) -> bool:
-    if isinstance(color, str) and color.lower() == "none":
-        return False
-    return mcolors.is_color_like(color)
-
-
-def is_valid_matplotlib_cmap(cmap: str) -> bool:
-    if isinstance(cmap, str) and cmap.lower() == "none":
-        return False
-    return cmap in colormaps
-
-
-def required_iterations(n: int, t: float, fig: Figure, ax: Axes, linewidth: float = 1.5) -> int:
-    """
-    Compute how many polygon iterations are worth drawing.
-
-    Stops when the polygon becomes smaller than its own
-    rendered linewidth in data coordinates.
-    """
-
-    # Figure size in pixels
-    dpi = fig.dpi
-    width = fig.get_figwidth() * dpi
-    height = fig.get_figheight() * dpi
-
-    # Axes size in pixels
-    bbox = ax.get_position()
-    axes_width = width * bbox.width
-    axes_height = height * bbox.height
-
-    # Gap-closing threshold
-    # linewidth is in points (1pt = 1/72 inch)
-    lw_pixels = linewidth / 72 * dpi
-    eps_pixels = lw_pixels / 2
-    eps_over_R = eps_pixels * 2 / min(axes_height, axes_width)
-
-    s = shrink_factor(n, t)
-    return math.ceil(math.log(eps_over_R) / math.log(s))
+from itero.plotting._prepare import polygon_to_line
+from itero.plotting._validate import is_valid_matplotlib_cmap, is_valid_matplotlib_color
+from itero.plotting._colormap import distances_from_centroid, apply_cmap
 
 
 def build_figure(figure_size: tuple[int, int]) -> tuple[Figure, Axes]:
@@ -72,24 +32,6 @@ def build_figure(figure_size: tuple[int, int]) -> tuple[Figure, Axes]:
     ax.set_aspect("equal")
     ax.axis("off")
     return fig, ax
-
-def polygon_to_line(poly: Polygon) -> list[tuple[float, float]]:
-    """Convert a polygon to a closed polyline for plotting
-
-    Generate closed line chain based on the Polygon vertices to plot
-    the Polygon as closed by duplicating the first vertex as the last.
-    """
-
-    pts = poly.coords()
-
-    # Close only for visualization
-    first = poly.vertices[0]
-    last = poly.vertices[-1]
-
-    if not first.coincides_with(last):
-        pts.append((first.x, first.y))
-    
-    return pts
 
 
 def draw_polygons(
@@ -143,26 +85,8 @@ def draw_polygons(
             closed_line_chains, color=color, alpha=alpha
         )
     else:
-        # Maps colors based on polygon distance from center
-        distances = []
-        center = polygons.polygons[0].centroid()
-
-        for poly in polygons:
-            p = poly[0]  # pick representative vertex
-            dx = p.x - center.x
-            dy = p.y - center.y
-            distances.append(math.hypot(dx, dy))
-        
-        # Normalization step
-        distances = np.array(distances)
-
-        normalized = (
-            distances - distances.min()
-        ) / (
-            distances.max() - distances.min()
-        )
-        cmap_obj = colormaps.get_cmap(cmap)
-        colors = cmap_obj(1 - normalized)
+        distances = distances_from_centroid(polygons)
+        colors = apply_cmap(distances, cmap, invert=True)
 
         collection = LineCollection(
             closed_line_chains,
@@ -172,6 +96,18 @@ def draw_polygons(
     
     ax.add_collection(collection)
     ax.autoscale()
+
+    _finalize_figure(fig, save_path, show)
+
+
+def _finalize_figure(fig: Figure, save_path: str | None, show: bool) -> None:
+    """_summary_
+
+    Args:
+        fig (Figure): _description_
+        save_path (str): _description_
+        show (bool): _description_
+    """
 
     if save_path:
         try:

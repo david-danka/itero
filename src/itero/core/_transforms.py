@@ -14,10 +14,16 @@ Typical usage:
 import math
 
 from itero.exceptions import InvalidRatioError, InvalidIterationsError
-from itero.primitives import Point, Polygon, PolygonSequence
+from itero.core._primitives import Point, Polygon, PolygonSequence
 
 
-def transform_polygon(polygon: Polygon, t: float) -> Polygon:
+__all__ = [
+    "shrink_factor",
+    "iterate_polygon"
+]
+
+
+def _transform_polygon(polygon: Polygon, t: float) -> Polygon:
     """Return a new Polygon by interpolating each vertex towards the next.
  
     Each vertex of the resulting polygon lies a fraction t of the way
@@ -107,6 +113,6 @@ def iterate_polygon(polygon: Polygon, t: float, iterations: int,) -> PolygonSequ
     
     polygons = [polygon]
     for _ in range(iterations):
-        polygons.append(transform_polygon(polygons[-1], t))
+        polygons.append(_transform_polygon(polygons[-1], t))
     
     return PolygonSequence(polygons, t, iterations)

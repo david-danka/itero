@@ -1,7 +1,7 @@
 from hypothesis import given
 import pytest
 
-from itero.transforms import shrink_factor
+from itero.core._transforms import shrink_factor
 
 from tests.strategies import num_sides_st, ratio_st
 

@@ -2,7 +2,7 @@ import math
 
 from hypothesis import given
 
-from itero.primitives import Point
+from itero.core._primitives import Point
 from tests.strategies import (
     coordinate_st,
     point_st,

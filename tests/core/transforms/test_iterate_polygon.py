@@ -1,8 +1,8 @@
 from hypothesis import given
 
-from itero.transforms import (
+from itero.core._transforms import (
     iterate_polygon,
-    transform_polygon,
+    _transform_polygon,
 )
 
 from tests.strategies import (
@@ -31,7 +31,7 @@ def test_iteration_step_consistency(polygon, ratio, iterations):
     seq = iterate_polygon(polygon, ratio, iterations)
 
     for i in range(len(seq) - 1):
-        expected = transform_polygon(seq.polygons[i], ratio)
+        expected = _transform_polygon(seq.polygons[i], ratio)
 
         for p1, p2 in zip(expected, seq.polygons[i + 1]):
             assert p1.coincides_with(p2)

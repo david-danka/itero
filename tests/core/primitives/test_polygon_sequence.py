@@ -1,8 +1,8 @@
 from hypothesis import given
 import pytest
 
-from itero.primitives import Polygon, PolygonSequence
-from itero.transforms import transform_polygon, iterate_polygon
+from itero.core._primitives import Polygon, PolygonSequence
+from itero.core._transforms import _transform_polygon, iterate_polygon
 from tests.strategies import (
     iterations_st,
     ratio_st,
@@ -30,7 +30,7 @@ def test_sequence_step_consistency(polygon, ratio, iterations):
     polys = list(seq)
 
     for i in range(len(polys) - 1):
-        expected = transform_polygon(polys[i], ratio)
+        expected = _transform_polygon(polys[i], ratio)
         assert polys[i+1].area() == pytest.approx(expected.area())
 
 def test_polygon_sequence_iterable():

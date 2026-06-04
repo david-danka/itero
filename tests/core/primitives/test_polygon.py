@@ -3,7 +3,7 @@ import math
 from hypothesis import given
 import pytest
 
-from itero.primitives import Point, Polygon
+from itero.core._primitives import Point, Polygon
 from itero.exceptions import InvalidNumSidesError
 from tests.helpers import translate_polygon, reverse_polygon, scale_polygon
 from tests.strategies import (

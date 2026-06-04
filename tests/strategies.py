@@ -4,7 +4,7 @@ Reusable Hypothesis strategies for geometry tests.
 
 from hypothesis import strategies as st
 
-from itero.primitives import Point, Polygon
+from itero.core import Point, Polygon
 
 # ----------------------------
 # Primitive numeric strategies

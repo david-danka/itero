@@ -2,7 +2,7 @@
 Reusable geometry helpers for tests.
 """
 
-from itero.primitives import Point, Polygon
+from itero.core import Point, Polygon
 
 
 def translate_polygon(polygon: Polygon, delta: Point) -> Polygon:
