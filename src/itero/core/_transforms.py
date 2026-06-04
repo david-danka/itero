@@ -17,12 +17,6 @@ from itero.exceptions import InvalidRatioError, InvalidIterationsError
 from itero.core._primitives import Point, Polygon, PolygonSequence
 
 
-__all__ = [
-    "shrink_factor",
-    "iterate_polygon"
-]
-
-
 def _transform_polygon(polygon: Polygon, t: float) -> Polygon:
     """Return a new Polygon by interpolating each vertex towards the next.
  

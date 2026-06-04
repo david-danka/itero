@@ -12,14 +12,6 @@ import math
 from itero.exceptions import InvalidNumSidesError
 
 
-__all__ = [
-    "Point",
-    "Polygon",
-    "PolygonSequence",
-]
-
-
-
 @dataclass
 class Point:
     """A point in 2D Euclidean space.
