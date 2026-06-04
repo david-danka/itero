@@ -1,3 +1,9 @@
+"""Application-specific exception types for the itero package.
+
+Defines a lightweight, coherent error hierarchy for geometry validation,
+plotting configuration, and rendering failures.
+"""
+
 class PolygonIterError(Exception):
     """Base exception for all application errors."""
 

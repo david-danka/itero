@@ -62,14 +62,19 @@ def _transform_polygon(polygon: Polygon, t: float) -> Polygon:
 
 
 def shrink_factor(n: int, t: float) -> float:
-    """Calculate shrink factor for the transformation defined by transform_polygon function.
+    """Calculate the asymptotic shrink factor of a regular polygon transformation.
+
+    The shrink factor describes how the radius of a regular polygon changes
+    after a single interpolation step with ratio t. It is useful for estimating
+    the number of iterations required before the polygon becomes visually small.
 
     Args:
-        n (int): Number of sides of regular polygon
-        t (float): transformation ratio
+        n: Number of sides of the regular polygon.
+        t: Interpolation ratio between each vertex and its successor.
 
     Returns:
-        float: shrink factor
+        The multiplicative factor by which the polygon's effective size
+        is reduced in one iteration.
     """
     angle = 2 * math.pi / n
     return math.sqrt(1 - 2*t*(1-t)*(1 - math.cos(angle)))

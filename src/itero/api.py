@@ -1,3 +1,9 @@
+"""High-level plotting API for polygon iteration.
+
+This module exposes a concise interface for generating a regular polygon,
+iterating it by linear interpolation, and rendering the resulting sequence.
+"""
+
 from itero.plotting import build_figure, required_iterations, draw_polygons
 from itero.core import iterate_polygon, Polygon
 
@@ -12,15 +18,22 @@ def plot_polygons(
     show: bool = True,
     save_path: str | None = None,
 ) -> None:
-    """_summary_
+    """Generate and render an iterative polygon sequence.
+
+    The function constructs a regular polygon with the requested number of
+    sides, applies repeated vertex interpolation, and delegates rendering to
+    the plotting layer.
 
     Args:
-        polygons (PolygonSequence): _description_
-        cmap (str | None, optional): _description_. Defaults to None.
-        color (str | None, optional): _description_. Defaults to None.
-        alpha (float, optional): _description_. Defaults to 1.0.
-        show (bool, optional): _description_. Defaults to True.
-        save_path (str | None, optional): _description_. Defaults to None.
+        num_sides: Number of sides of the initial regular polygon.
+        ratio: Interpolation factor between each vertex and its successor.
+        iterations: Number of transformation steps to apply.
+        figure_size: Figure dimensions in inches as (width, height).
+        cmap: Optional Matplotlib colormap name for gradient colouring.
+        color: Optional fixed line colour for all polygons.
+        alpha: Line opacity in the range [0.0, 1.0].
+        show: Whether to display the interactive figure.
+        save_path: Optional path to save the rendered figure to disk.
     """
 
     polygon = Polygon.regular(num_sides)

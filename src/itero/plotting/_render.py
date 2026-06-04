@@ -51,8 +51,9 @@ def draw_polygons(
     Args:
         polygons: The sequence of polygons to render. Typically the output
             of iterate_polygon.
-        figure_size: Width and height of the figure in inches, passed
-            directly to Matplotlib as (width, height).
+        fig: Matplotlib Figure containing the axes to draw on.
+        ax: Matplotlib Axes where the lines should be added.
+        cmap: Optional Matplotlib colormap name for gradient colouring.
         color: Line colour for all polygons. Accepts any value supported
             by Matplotlib (named colours, hex strings, RGB tuples, etc.).
         alpha: Opacity of each line, in the range [0.0, 1.0]. Lower values
@@ -67,7 +68,8 @@ def draw_polygons(
     Example:
         >>> polygon = Polygon.regular(6)
         >>> sequence = iterate_polygon(polygon, t=0.1, iterations=200)
-        >>> plot_polygons(sequence, figure_size=(8, 8), color='indigo', alpha=0.15)
+        >>> fig, ax = build_figure((8, 8))
+        >>> draw_polygons(sequence, fig, ax, color='indigo', alpha=0.15)
     """
 
     if color is not None and not is_valid_matplotlib_color(color):
@@ -104,12 +106,12 @@ def draw_polygons(
 
 
 def _finalize_figure(fig: Figure, save_path: str | None, show: bool) -> None:
-    """_summary_
+    """Save and/or display the final plot before closing the figure.
 
     Args:
-        fig (Figure): _description_
-        save_path (str): _description_
-        show (bool): _description_
+        fig: Matplotlib Figure to finalize.
+        save_path: Optional output path. If provided, the figure is written to disk.
+        show: Whether to display the figure interactively.
     """
 
     if save_path:

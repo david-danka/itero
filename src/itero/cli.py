@@ -1,11 +1,11 @@
-"""
-Command-line interface for the polygon iteration visualiser.
- 
-Exposes the full pipeline — polygon construction, iterative transformation,
-and rendering — as a single command with configurable parameters.
- 
+"""Command-line interface for the polygon iteration visualiser.
+
+This module exposes the full pipeline — polygon construction, iterative
+transformation, and rendering — as a single command with configurable
+parameters.
+
 Typical usage:
-    $ python -m itero --num-sides 6 --iterations 500 --t 0.2 --color indigo --alpha 0.1
+    $ python -m itero --num-sides 6 --iterations 500 --ratio 0.2 --color indigo --alpha 0.1
     $ python -m itero --num-sides 3 --save-path output.png --no-show
 """
 

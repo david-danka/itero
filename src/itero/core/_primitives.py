@@ -3,7 +3,7 @@ Core domain primitives for polygon construction and representation.
  
 This module defines the foundational data types used throughout the package:
 Point, Polygon, and PolygonSequence. These are pure data containers with
-minimal behaviour — geometric algorithms live in transforms.py.
+minimal behaviour.
 """
 
 from dataclasses import dataclass
@@ -33,6 +33,19 @@ class Point:
     y: float
 
     def coincides_with(self, other: "Point", rel_tol: float = 1e-6, abs_tol: float = 1e-9) -> bool:
+        """Check whether two points are effectively equal.
+
+        Comparison uses relative and absolute tolerances to account for floating
+        point drift when comparing coordinates.
+
+        Args:
+            other: The point to compare against.
+            rel_tol: Relative tolerance for comparisons.
+            abs_tol: Absolute tolerance for comparisons.
+
+        Returns:
+            True if both coordinates are close within the provided tolerances.
+        """
         return (
             math.isclose(self.x, other.x, rel_tol=rel_tol, abs_tol=abs_tol)
             and math.isclose(self.y, other.y,rel_tol=rel_tol, abs_tol=abs_tol)
@@ -56,7 +69,7 @@ class Polygon:
             )
     
     def area(self):
-        """Calculate are of polygon"""
+        """Return the absolute area enclosed by the polygon."""
         return abs(self._signed_area())
     
     def _signed_area(self) -> float:

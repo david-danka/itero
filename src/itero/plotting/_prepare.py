@@ -1,3 +1,5 @@
+"""Prepare polygon data for plotting and estimate iteration counts."""
+
 import math
 
 from matplotlib.pyplot import Axes, Figure
@@ -8,11 +10,22 @@ from itero.core import Polygon, shrink_factor
 def required_iterations(
     n: int, t: float, fig: Figure, ax: Axes, linewidth: float = 1.5
 ) -> int:
-    """
-    Compute how many polygon iterations are worth drawing.
+    """Estimate the number of iterations needed before shapes become visually tiny.
 
-    Stops when the polygon becomes smaller than its own
-    rendered linewidth in data coordinates.
+    The estimate stops when the next transformed polygon would be smaller than
+    the stroke width in display coordinates, at which point additional
+    iterations add little visible detail.
+
+    Args:
+        n: Number of sides of the initial regular polygon.
+        t: Interpolation ratio for each transformation.
+        fig: Matplotlib Figure used to calculate display scaling.
+        ax: Matplotlib Axes used to calculate the drawing area.
+        linewidth: Stroke width in points used to judge visual significance.
+
+    Returns:
+        Number of iterations to draw before the polygon becomes smaller
+        than the rendered line thickness.
     """
 
     # Figure size in pixels
@@ -36,10 +49,16 @@ def required_iterations(
 
 
 def polygon_to_line(poly: Polygon) -> list[tuple[float, float]]:
-    """Convert a polygon to a closed polyline for plotting
+    """Convert a polygon into a closed line chain for Matplotlib.
 
-    Generate closed line chain based on the Polygon vertices to plot
-    the Polygon as closed by duplicating the first vertex as the last.
+    The returned list duplicates the first vertex at the end so the polygon
+    appears closed when rendered as a LineCollection.
+
+    Args:
+        poly: Polygon to convert.
+
+    Returns:
+        List of (x, y) coordinate pairs forming a closed line path.
     """
 
     pts = poly.coords()
