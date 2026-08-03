@@ -49,7 +49,7 @@ def test_transform_translation_invariance(polygon, delta, ratio):
     transformed_original = _transform_polygon(polygon, ratio)
     transformed_moved = _transform_polygon(moved, ratio)
 
-    expected = _translate_polygon(transformed_original, delta)
+    expected = translate_polygon(transformed_original, delta)
 
     for p1, p2 in zip(transformed_moved, expected):
         assert p1.coincides_with(p2)
