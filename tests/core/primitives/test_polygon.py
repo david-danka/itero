@@ -5,7 +5,7 @@ import pytest
 
 from itero.core._primitives import Point, Polygon
 from itero.exceptions import InvalidNumSidesError
-from tests.helpers import translate_polygon, reverse_polygon, scale_polygon
+from tests.helpers import float_tol, translate_polygon, reverse_polygon, scale_polygon
 from tests.strategies import (
     num_sides_st,
     radius_st,
@@ -57,27 +57,31 @@ class TestPolygonArea:
     def test_area_independent_of_vertex_order(self, polygon):
         reversed_polygon = reverse_polygon(polygon)
 
-        assert polygon.area() == pytest.approx(reversed_polygon.area())
+        tol = float_tol()
+        assert polygon.area() == pytest.approx(reversed_polygon.area(), rel=tol, abs=tol)
     
     @given(regular_polygon_st)
     def test_signed_area_changes_sign(self, polygon):
         reversed_polygon = reverse_polygon(polygon)
 
+        tol = float_tol()
         assert polygon._signed_area() == pytest.approx(
-            -reversed_polygon._signed_area()
+            -reversed_polygon._signed_area(), rel=tol, abs=tol
         )
 
     @given(regular_polygon_st, translation_st)
     def test_area_translation_invariance(self, polygon, delta):
         moved = translate_polygon(polygon, delta)
-    
-        assert moved.area() == pytest.approx(polygon.area())
+
+        tol = float_tol()
+        assert moved.area() == pytest.approx(polygon.area(), rel=tol, abs=tol)
     
     @given(regular_polygon_st, scale_st)
     def test_area_scales_quadratically(self, polygon, scale):
         scaled = scale_polygon(polygon, scale)
 
-        assert scaled.area() == pytest.approx(polygon.area() * scale ** 2)
+        tol = float_tol()
+        assert scaled.area() == pytest.approx(polygon.area() * scale ** 2, rel=tol, abs=tol)
 
 class TestPolygonCentroid:
 
@@ -113,7 +117,8 @@ class TestPolygonCentroid:
         c1 = polygon.centroid()
         c2 = reversed_polygon.centroid()
 
-        assert c1.coincides_with(c2)
+        tol = float_tol()
+        assert c1.coincides_with(c2, rel_tol=tol, abs_tol=tol)
     
     @given(regular_polygon_st, translation_st)
     def test_centroid_translation_invariance(self, polygon, delta):
@@ -126,7 +131,8 @@ class TestPolygonCentroid:
             centroid.y + delta.y,
         )
 
-        assert moved_centroid.coincides_with(expected)
+        tol = float_tol()
+        assert moved_centroid.coincides_with(expected, rel_tol=tol, abs_tol=tol)
     
     @given(regular_polygon_st, scale_st)
     def test_centroid_scales_linearly(self, polygon, scale):
@@ -153,7 +159,8 @@ class TestRegularPolygon:
 
         centroid = polygon.centroid()
 
-        assert centroid.coincides_with(center)
+        tol = float_tol()
+        assert centroid.coincides_with(center, rel_tol=tol, abs_tol=tol)
 
     @given(num_sides_st, radius_st, point_st)
     def test_regular_polygon_num_vertices(self, num_sides, radius, center):

@@ -39,7 +39,10 @@ def test_transform_near_zero_behaves_like_identity(polygon):
 def test_transform_preserves_centroid(polygon, ratio):
     transformed = _transform_polygon(polygon, ratio)
 
-    assert transformed.centroid().coincides_with(polygon.centroid())
+    tol = float_tol()
+    assert transformed.centroid().coincides_with(
+        polygon.centroid(), rel_tol=tol, abs_tol=tol
+    )
 
 
 @given(regular_polygon_st, translation_st, ratio_st)
@@ -66,9 +69,11 @@ def test_regular_polygon_area_shrinks_correctly(
 
     expected_factor = shrink_factor(num_sides, ratio)
 
+    tol = float_tol()
     assert transformed.area() == pytest.approx(
         polygon.area() * expected_factor**2,
-        rel=1e-6,
+        rel=tol,
+        abs=tol,
     )
 
 @given(regular_polygon_st, ratio_st)
