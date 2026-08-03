@@ -10,14 +10,12 @@ from tests.strategies import (
 )
 
 
-@given(coordinate_st, coordinate_st, tolerance_st)
-def test_point_coincides_exact(x, y, tolerances):
+@given(coordinate_st, coordinate_st)
+def test_point_coincides_exact(x, y):
     p1 = Point(x, y)
     p2 = Point(x, y)
 
-    assert p1.coincides_with(
-        other=p2, rel_tol=tolerances[0], abs_tol=tolerances[1]
-    )
+    assert p1.coincides_with(p2, rel_tol=0.0, abs_tol=0.0)
 
 
 @given(point_st, tolerance_st)
