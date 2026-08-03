@@ -35,6 +35,21 @@ def float_tol(k: float = 1000.0) -> float:
     return k * sys.float_info.epsilon
 
 
+def approx_between(value: float, lo: float, hi: float) -> bool:
+    """Return True if value lies within [lo, hi], up to float rounding.
+
+    A raw `lo <= value <= hi` can fail even when the underlying math is
+    exact: `value`, `lo`, and `hi` may be computed via independent
+    floating-point expressions, so a value that mathematically sits
+    exactly at the boundary can round to a hair outside it. Widen the
+    bracket by float_tol(), scaled by the bracket's own magnitude — the
+    same rel_tol-style auto-scaling math.isclose provides for equality
+    checks, applied here to an inequality instead.
+    """
+    slack = float_tol() * max(abs(lo), abs(hi), 1.0)
+    return (lo - slack) <= value <= (hi + slack)
+
+
 def translate_polygon(polygon: Polygon, delta: Point) -> Polygon:
     """Return translated copy of polygon."""
 

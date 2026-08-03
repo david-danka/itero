@@ -3,7 +3,7 @@ import pytest
 
 from itero.core._primitives import Polygon
 from itero.core._transforms import _transform_polygon, shrink_factor
-from tests.helpers import float_tol, translate_polygon
+from tests.helpers import approx_between, float_tol, translate_polygon
 from tests.strategies import(
     num_sides_st,
     radius_st,
@@ -87,6 +87,6 @@ def test_transformed_vertex_between_neighbors(polygon, ratio):
         p2 = polygon[(i + 1) % n]
         p_new = transformed[i]
 
-        assert min(p1.x, p2.x) <= p_new.x <= max(p1.x, p2.x)
-        assert min(p1.y, p2.y) <= p_new.y <= max(p1.y, p2.y)
+        assert approx_between(p_new.x, min(p1.x, p2.x), max(p1.x, p2.x))
+        assert approx_between(p_new.y, min(p1.y, p2.y), max(p1.y, p2.y))
 
