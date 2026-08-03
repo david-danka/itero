@@ -4,7 +4,12 @@ This module exposes a concise interface for generating a regular polygon,
 iterating it by linear interpolation, and rendering the resulting sequence.
 """
 
-from itero.plotting import build_figure, required_iterations, draw_polygons
+from itero.plotting import (
+    build_figure,
+    draw_polygons,
+    iterations_until_imperceptible,
+    matplotlib_eps_over_r,
+)
 from itero.core import iterate_polygon, Polygon
 
 def plot_polygons(
@@ -37,24 +42,18 @@ def plot_polygons(
     """
 
     polygon = Polygon.regular(num_sides)
-    fig, ax = build_figure(figure_size)
 
     if iterations is None:
-        iterations = required_iterations(
-            n=num_sides,
-            t=ratio,
-            fig=fig,
-            ax=ax,
-            linewidth=1.5
-        )
-    else:
-        iterations = iterations
+        eps_over_r = matplotlib_eps_over_r(*figure_size, linewidth=1.5)
+        iterations = iterations_until_imperceptible(num_sides, ratio, eps_over_r)
 
     polygons = iterate_polygon(
         polygon,
         t=ratio,
         iterations=iterations,
     )
+
+    fig, ax = build_figure(figure_size)
 
     draw_polygons(
         polygons,
