@@ -67,9 +67,16 @@ class Polygon:
     def _signed_area(self) -> float:
         """Calculate signed area.
 
-        Calculate the signed area of the closed polygon 
+        Calculate the signed area of the closed polygon
         according to the shoelace formula.
         """
+
+        # Shoelace cross-products scale with absolute coordinate magnitude,
+        # not the polygon's own size. Far from the origin, that magnitude
+        # swamps the (much smaller) area signal with catastrophic
+        # cancellation, so accumulate relative to the first vertex instead.
+        x0 = self.vertices[0].x
+        y0 = self.vertices[0].y
 
         # Initialization
         sum_a = 0.0
@@ -77,10 +84,10 @@ class Polygon:
 
         # Calculation
         for i in range(n):
-            x1 = self.vertices[i].x
-            y1 = self.vertices[i].y
-            x2 = self.vertices[(i + 1) % n].x
-            y2 = self.vertices[(i + 1) % n].y
+            x1 = self.vertices[i].x - x0
+            y1 = self.vertices[i].y - y0
+            x2 = self.vertices[(i + 1) % n].x - x0
+            y2 = self.vertices[(i + 1) % n].y - y0
             sum_a += x1 * y2 - x2 * y1
 
         return 0.5 * sum_a
@@ -91,7 +98,13 @@ class Polygon:
 
         The centroid of a non-self-intersecting polygon.
         """
-        
+
+        # Same reasoning as _signed_area: accumulate relative to the first
+        # vertex so the cross-products scale with the polygon's own size,
+        # not its distance from the origin, then translate the result back.
+        x0 = self.vertices[0].x
+        y0 = self.vertices[0].y
+
         # Initialization
         A = self._signed_area()
         sum_x = 0.0
@@ -99,15 +112,16 @@ class Polygon:
         n = len(self.vertices)
 
         for i in range(n):
-            x1 = self.vertices[i].x
-            y1 = self.vertices[i].y
-            x2 = self.vertices[(i + 1) % n].x
-            y2 = self.vertices[(i + 1) % n].y
-            sum_x += (x1 + x2) * (x1 * y2 - x2 * y1)
-            sum_y += (y1 + y2) * (x1 * y2 - x2 * y1)
+            x1 = self.vertices[i].x - x0
+            y1 = self.vertices[i].y - y0
+            x2 = self.vertices[(i + 1) % n].x - x0
+            y2 = self.vertices[(i + 1) % n].y - y0
+            cross = x1 * y2 - x2 * y1
+            sum_x += (x1 + x2) * cross
+            sum_y += (y1 + y2) * cross
 
-        C_x = 1 / (6 * A) * sum_x
-        C_y = 1 / (6 * A) * sum_y
+        C_x = 1 / (6 * A) * sum_x + x0
+        C_y = 1 / (6 * A) * sum_y + y0
 
         return Point(C_x, C_y)
 
