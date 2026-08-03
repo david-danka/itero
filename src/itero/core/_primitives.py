@@ -8,8 +8,9 @@ minimal behaviour.
 
 from dataclasses import dataclass
 import math
+import sys
 
-from itero.exceptions import InvalidNumSidesError
+from itero.exceptions import DegeneratePolygonError, InvalidNumSidesError
 
 
 @dataclass
@@ -107,6 +108,24 @@ class Polygon:
 
         # Initialization
         A = self._signed_area()
+
+        # The centroid formula divides by A, which is undefined for a
+        # degenerate (near-zero-area) polygon — either genuinely collinear
+        # vertices, or a polygon shrunk below float64's precision floor.
+        # Guard on a scale-derived floor rather than literal zero, since a
+        # tiny-but-nonzero A here is just as numerically meaningless as
+        # exactly zero (same k*epsilon safety-factor reasoning used
+        # throughout this package's floating-point comparisons).
+        local_scale = max(
+            max(abs(v.x - x0), abs(v.y - y0)) for v in self.vertices
+        )
+        area_floor = 1000 * sys.float_info.epsilon * local_scale ** 2
+        if abs(A) <= area_floor:
+            raise DegeneratePolygonError(
+                f"Polygon has a degenerate (near-zero) area of {A!r}; "
+                "centroid is undefined."
+            )
+
         sum_x = 0.0
         sum_y = 0.0
         n = len(self.vertices)
