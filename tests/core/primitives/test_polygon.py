@@ -141,8 +141,12 @@ class TestPolygonCentroid:
         c1 = polygon.centroid()
         c2 = scaled.centroid()
 
-        assert c2.x == pytest.approx(c1.x * scale)
-        assert c2.y == pytest.approx(c1.y * scale)
+        # c1.x/c1.y may already carry tiny construction-noise around a
+        # true value of 0 (e.g. a symmetric polygon); multiplying by
+        # `scale` amplifies that noise by the same factor.
+        tol = float_tol() * (1 + scale)
+        assert c2.x == pytest.approx(c1.x * scale, rel=tol, abs=tol)
+        assert c2.y == pytest.approx(c1.y * scale, rel=tol, abs=tol)
     
 
 class TestRegularPolygon:
