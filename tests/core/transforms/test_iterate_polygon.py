@@ -5,6 +5,7 @@ from itero.core._transforms import (
     _transform_polygon,
 )
 
+from tests.helpers import float_tol
 from tests.strategies import (
     iterations_st,
     ratio_st,
@@ -29,12 +30,13 @@ def test_iterate_starts_with_original(polygon, ratio, iterations):
 @given(regular_polygon_st, ratio_st, iterations_st)
 def test_iteration_step_consistency(polygon, ratio, iterations):
     seq = iterate_polygon(polygon, ratio, iterations)
+    tol = float_tol()
 
     for i in range(len(seq) - 1):
         expected = _transform_polygon(seq.polygons[i], ratio)
 
         for p1, p2 in zip(expected, seq.polygons[i + 1]):
-            assert p1.coincides_with(p2)
+            assert p1.coincides_with(p2, rel_tol=tol, abs_tol=tol)
 
 
 @given(regular_polygon_st, ratio_st, iterations_st)

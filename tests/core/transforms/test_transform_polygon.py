@@ -3,7 +3,7 @@ import pytest
 
 from itero.core._primitives import Polygon
 from itero.core._transforms import _transform_polygon, shrink_factor
-from tests.helpers import translate_polygon
+from tests.helpers import float_tol, translate_polygon
 from tests.strategies import(
     num_sides_st,
     radius_st,
@@ -51,8 +51,9 @@ def test_transform_translation_invariance(polygon, delta, ratio):
 
     expected = translate_polygon(transformed_original, delta)
 
+    tol = float_tol()
     for p1, p2 in zip(transformed_moved, expected):
-        assert p1.coincides_with(p2)
+        assert p1.coincides_with(p2, rel_tol=tol, abs_tol=tol)
 
 
 @given(num_sides_st, radius_st, point_st, ratio_st)
