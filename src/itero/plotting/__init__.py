@@ -1,9 +1,14 @@
-from itero.plotting._render import build_figure, draw_polygons
-from itero.plotting._iterations import iterations_until_imperceptible, matplotlib_eps_over_r
+"""Backend-agnostic plotting utilities: iteration estimation and data prep.
+
+Concrete rendering implementations live in nested backend subpackages,
+e.g. itero.plotting._matplotlib.
+"""
+
+from itero.plotting._iterations import iterations_until_imperceptible
+from itero.plotting._prepare import distances_from_centroid, polygon_to_line
 
 __all__ = [
-    "build_figure",
-    "draw_polygons",
+    "distances_from_centroid",
     "iterations_until_imperceptible",
-    "matplotlib_eps_over_r",
+    "polygon_to_line",
 ]

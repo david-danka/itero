@@ -4,12 +4,8 @@ This module exposes a concise interface for generating a regular polygon,
 iterating it by linear interpolation, and rendering the resulting sequence.
 """
 
-from itero.plotting import (
-    build_figure,
-    draw_polygons,
-    iterations_until_imperceptible,
-    matplotlib_eps_over_r,
-)
+from itero.plotting import iterations_until_imperceptible
+from itero.plotting._matplotlib import build_figure, draw_polygons, matplotlib_eps_over_r
 from itero.core import iterate_polygon, Polygon
 
 def plot_polygons(

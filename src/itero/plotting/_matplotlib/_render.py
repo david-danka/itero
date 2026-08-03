@@ -1,6 +1,6 @@
 """
 Visualisation utilities for polygon sequences.
- 
+
 This module provides Matplotlib-based rendering of PolygonSequence objects.
 Each polygon in the sequence is drawn as a separate line, allowing the full
 iterative transformation to be visualised as an overlapping series of shapes.
@@ -18,16 +18,16 @@ from itero.exceptions import (
     InvalidFigureSizeError,
     RenderingError,
 )
-from itero.plotting._prepare import polygon_to_line
-from itero.plotting._validate import is_valid_matplotlib_cmap, is_valid_matplotlib_color
-from itero.plotting._colormap import distances_from_centroid, apply_cmap
+from itero.plotting import distances_from_centroid, polygon_to_line
+from itero.plotting._matplotlib._validate import is_valid_matplotlib_cmap, is_valid_matplotlib_color
+from itero.plotting._matplotlib._colormap import apply_cmap
 
 
 def build_figure(figure_size: tuple[int, int]) -> tuple[Figure, Axes]:
     """Create and return an empty figure and axes, ready for plotting."""
     if figure_size[0] < 0 or figure_size[1] < 0:
         raise InvalidFigureSizeError(f"Figure width and height must be positive, got {figure_size}.")
-    
+
     fig, ax = plt.subplots(figsize = figure_size)
     ax.set_aspect("equal")
     ax.axis("off")
@@ -43,11 +43,11 @@ def draw_polygons(
     save_path: str | None = None,
 ) -> None:
     """Render a PolygonSequence as an overlapping series of line plots.
- 
+
     Each polygon is drawn as a single continuous line using its x and y
     coordinate lists. Axes are hidden and aspect ratio is locked to equal
     so the shapes are not distorted.
- 
+
     Args:
         polygons: The sequence of polygons to render. Typically the output
             of iterate_polygon.
@@ -64,7 +64,7 @@ def draw_polygons(
         save_path: File path to save the figure. The format is inferred
             from the extension (e.g. '.png', '.svg', '.pdf'). If None,
             the figure is not saved. Defaults to None.
- 
+
     Example:
         >>> polygon = Polygon.regular(6)
         >>> sequence = iterate_polygon(polygon, t=0.1, iterations=200)
@@ -98,7 +98,7 @@ def draw_polygons(
             colors=colors,
             alpha=alpha
         )
-    
+
     ax.add_collection(collection)
     ax.autoscale()
 
@@ -121,5 +121,5 @@ def _finalize_figure(fig: Figure, save_path: str | None, show: bool) -> None:
             raise RenderingError(f"Could not save figure to '{save_path}': {e}") from e
     if show:
         plt.show()
-    
+
     plt.close(fig)
