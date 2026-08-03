@@ -4,7 +4,7 @@ from hypothesis import given
 import pytest
 
 from itero.core._primitives import Point, Polygon
-from itero.exceptions import InvalidNumSidesError
+from itero.exceptions import InvalidNumSidesError, DegeneratePolygonError
 from tests.helpers import float_tol, translate_polygon, reverse_polygon, scale_polygon
 from tests.strategies import (
     num_sides_st,
@@ -28,6 +28,16 @@ class TestPolygonValidation:
     @given(regular_polygon_st)
     def test_polygon_accepts_at_least_three_vertices(self, polygon):
         assert len(polygon.vertices) >= 3
+
+    def test_centroid_raises_on_degenerate_polygon(self):
+        polygon = Polygon([
+            Point(0.0, 0.0),
+            Point(1.0, 0.0),
+            Point(2.0, 0.0),
+        ])
+
+        with pytest.raises(DegeneratePolygonError):
+            polygon.centroid()
 
 class TestPolygonArea:
     def test_triangle_area(self):

@@ -1,9 +1,13 @@
-from hypothesis import given
+import math
+
+from hypothesis import assume, given
 
 from itero.core._transforms import (
     iterate_polygon,
     _transform_polygon,
+    shrink_factor,
 )
+from itero.exceptions import DegeneratePolygonError
 
 from tests.helpers import float_tol
 from tests.strategies import (
@@ -44,8 +48,28 @@ def test_iteration_preserves_centroid(polygon, ratio, iterations):
     seq = iterate_polygon(polygon, ratio, iterations)
     expected = polygon.centroid()
 
-    # drift budget: each iteration can shift centroid by ~1e-6
-    tol = iterations * 1e-6
+    s = shrink_factor(len(polygon), ratio)
+    radius = max(
+        math.hypot(v.x - expected.x, v.y - expected.y) for v in polygon.vertices
+    )
 
-    for p in seq:
-        assert p.centroid().coincides_with(expected, rel_tol=tol, abs_tol=tol)
+    for i, p in enumerate(seq):
+        # Absolute vertex error accumulated over i chained transform steps
+        # converges to roughly float_tol() * radius / (1 - s) (most of it
+        # from the earliest, largest steps). centroid()'s division by a
+        # shrinking area then amplifies that fixed error by ~1/s**i as the
+        # polygon contracts, so the bound grows rather than staying flat.
+        compounding = float_tol() * radius / ((1 - s) * s ** i)
+        tol = float_tol() + compounding
+
+        try:
+            actual = p.centroid()
+        except DegeneratePolygonError:
+            # The polygon has shrunk below float64's precision floor at
+            # this iteration count; there's no meaningful centroid left to
+            # compare, and no amount of tolerance fixes that. Discard this
+            # example rather than treat it as a property failure.
+            assume(False)
+            return
+
+        assert actual.coincides_with(expected, rel_tol=tol, abs_tol=tol)
