@@ -8,7 +8,7 @@ import importlib
 
 from itero.core import iterate_polygon, Polygon
 from itero.exceptions import InvalidBackendError
-from itero.plotting import iterations_until_imperceptible
+from itero.plotting import iterations_until_imperceptible, validate_figure_size
 
 # Each entry must be an importable module exposing
 # render_polygons(polygons, figure_size, ...) -> figure and
@@ -65,6 +65,13 @@ def plot_polygons(
             f"{sorted(_BACKEND_MODULES)}."
         )
     renderer = importlib.import_module(_BACKEND_MODULES[backend])
+
+    # Validated here, before eps_over_r runs: a zero figure_size would
+    # otherwise reach eps_over_r's pixel-ratio math first and crash with
+    # a raw ZeroDivisionError, bypassing render_polygons' own check
+    # entirely (that check only runs later, and only on this function's
+    # own explicit-iterations path).
+    validate_figure_size(figure_size)
 
     polygon = Polygon.regular(num_sides)
 

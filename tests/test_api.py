@@ -4,7 +4,7 @@ import pytest
 from matplotlib.figure import Figure as MatplotlibFigure
 
 from itero.api import plot_polygons
-from itero.exceptions import InvalidBackendError
+from itero.exceptions import InvalidBackendError, InvalidFigureSizeError
 from itero.plotting import iterations_until_imperceptible
 from itero.plotting._matplotlib import eps_over_r as matplotlib_eps_over_r
 from itero.plotting._plotly import eps_over_r as plotly_eps_over_r
@@ -70,6 +70,19 @@ def test_auto_iterations_matches_manual_calculation(backend):
         actual = len(fig.data)
 
     assert actual == expected_iterations + 1
+
+
+@pytest.mark.parametrize("backend", ["matplotlib", "plotly"])
+def test_zero_figure_size_raises_cleanly_with_auto_iterations(backend):
+    """Regression: with iterations=None, eps_over_r ran before any
+    figure_size validation existed, so figure_size=(0, 0) crashed with a
+    raw ZeroDivisionError (min(axes_width, axes_height) == 0) instead of
+    the intended InvalidFigureSizeError."""
+    with pytest.raises(InvalidFigureSizeError):
+        plot_polygons(
+            num_sides=5, ratio=0.2, iterations=None, figure_size=(0, 0),
+            show=False, backend=backend,
+        )
 
 
 @pytest.mark.parametrize("backend", ["matplotlib", "plotly"])
