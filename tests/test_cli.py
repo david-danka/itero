@@ -81,6 +81,46 @@ def test_cmap_and_color_together_errors(monkeypatch, capsys):
     assert "not both" in capsys.readouterr().err
 
 
+def test_num_sides_over_max_errors(monkeypatch, capsys):
+    monkeypatch.setattr(
+        cli_module.sys, "argv",
+        ["itero", "--num-sides", str(cli_module.MAX_SIDES + 1)],
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        cli()
+
+    assert exc_info.value.code == 2
+    assert "--num-sides" in capsys.readouterr().err
+
+
+def test_iterations_over_max_errors(monkeypatch, capsys):
+    monkeypatch.setattr(
+        cli_module.sys, "argv",
+        ["itero", "--iterations", str(cli_module.MAX_ITERATIONS + 1)],
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        cli()
+
+    assert exc_info.value.code == 2
+    assert "--iterations" in capsys.readouterr().err
+
+
+def test_num_sides_at_max_is_allowed(monkeypatch):
+    """MAX_SIDES itself must not be rejected -- only values strictly above it."""
+    calls = []
+    monkeypatch.setattr(cli_module, "plot_polygons", lambda **kwargs: calls.append(kwargs))
+    monkeypatch.setattr(
+        cli_module.sys, "argv",
+        ["itero", "--num-sides", str(cli_module.MAX_SIDES), "--no-show", "--save-path", "x.png"],
+    )
+
+    cli()
+
+    assert len(calls) == 1
+
+
 def test_polygon_iter_error_exits_1_with_clean_message(monkeypatch, capsys):
     def _raise(*args, **kwargs):
         raise InvalidNumSidesError("bad number of sides")

@@ -134,7 +134,13 @@ def cli() -> None:
             "Either --cmap or --color "
             "can be provided, not both."
         )
-    
+
+    if args.num_sides > MAX_SIDES:
+        parser.error(f"--num-sides must be <= {MAX_SIDES}, got {args.num_sides}.")
+
+    if args.iterations is not None and args.iterations > MAX_ITERATIONS:
+        parser.error(f"--iterations must be <= {MAX_ITERATIONS}, got {args.iterations}.")
+
     try:
         plot_polygons(
             num_sides=args.num_sides,
