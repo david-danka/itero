@@ -17,10 +17,9 @@ from itero.exceptions import (
     InvalidAlphaError,
     InvalidColorError,
     InvalidColorMapError,
-    InvalidFigureSizeError,
     RenderingError,
 )
-from itero.plotting import distances_from_centroid, polygon_to_line
+from itero.plotting import distances_from_centroid, polygon_to_line, validate_figure_size
 from itero.plotting._matplotlib._validate import is_valid_matplotlib_cmap, is_valid_matplotlib_color
 from itero.plotting._matplotlib._colormap import apply_cmap
 
@@ -79,8 +78,7 @@ def render_polygons(
         >>> render_polygons(sequence, (8, 8), color='indigo', alpha=0.15)
     """
 
-    if figure_size[0] < 0 or figure_size[1] < 0:
-        raise InvalidFigureSizeError(f"Figure width and height must be positive, got {figure_size}.")
+    validate_figure_size(figure_size)
     if color is not None and not is_valid_matplotlib_color(color):
         raise InvalidColorError(f"'{color}' is not a valid Matplotlib color.")
     if cmap is not None and not is_valid_matplotlib_cmap(cmap):

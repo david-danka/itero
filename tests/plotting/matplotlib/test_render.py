@@ -17,8 +17,8 @@ def _sequence(num_sides=5, ratio=0.2, iterations=10):
     return iterate_polygon(polygon, t=ratio, iterations=iterations)
 
 
-@pytest.mark.parametrize("figure_size", [(-1, 4), (4, -1)])
-def test_rejects_negative_figure_size(figure_size):
+@pytest.mark.parametrize("figure_size", [(-1, 4), (4, -1), (0, 4), (4, 0), (0, 0)])
+def test_rejects_non_positive_figure_size(figure_size):
     with pytest.raises(InvalidFigureSizeError):
         render_polygons(_sequence(), figure_size, show=False)
 

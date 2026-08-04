@@ -12,10 +12,9 @@ from itero.exceptions import (
     InvalidAlphaError,
     InvalidColorError,
     InvalidColorMapError,
-    InvalidFigureSizeError,
     RenderingError,
 )
-from itero.plotting import distances_from_centroid, polygon_to_line
+from itero.plotting import distances_from_centroid, polygon_to_line, validate_figure_size
 from itero.plotting._plotly._validate import is_valid_plotly_cmap, is_valid_plotly_color
 from itero.plotting._plotly._colormap import apply_cmap
 
@@ -61,8 +60,7 @@ def render_polygons(
         The populated Plotly Figure.
     """
 
-    if figure_size[0] < 0 or figure_size[1] < 0:
-        raise InvalidFigureSizeError(f"Figure width and height must be positive, got {figure_size}.")
+    validate_figure_size(figure_size)
     if color is not None and not is_valid_plotly_color(color):
         raise InvalidColorError(f"'{color}' is not a valid Plotly color.")
     if cmap is not None and not is_valid_plotly_cmap(cmap):
