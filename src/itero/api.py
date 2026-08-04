@@ -8,9 +8,8 @@ import importlib
 
 from itero._validate_params import validate_params
 from itero.core import iterate_polygon, Polygon
-from itero.core._validate import validate_ratio
 from itero.exceptions import InvalidBackendError
-from itero.plotting import iterations_until_imperceptible, validate_figure_size
+from itero.plotting import iterations_until_imperceptible
 
 # Each entry must be an importable module exposing
 # render_polygons(polygons, figure_size, ...) -> figure and
@@ -77,6 +76,7 @@ def resolve_iterations(
     return iterations_until_imperceptible(num_sides, ratio, eps_over_r)
 
 
+@validate_params("num_sides", "ratio", "figure_size")
 def plot_polygons(
     num_sides: int,
     ratio: float,
@@ -94,6 +94,14 @@ def plot_polygons(
     The function constructs a regular polygon with the requested number of
     sides, applies repeated vertex interpolation, and delegates rendering to
     the requested backend.
+
+    num_sides, ratio, and figure_size are all validated before this body
+    runs (see @validate_params above) -- before eps_over_r/
+    iterations_until_imperceptible run inside resolve_iterations below,
+    both of which call shrink_factor(num_sides, ratio) internally to
+    auto-compute iterations, before iterate_polygon's own validation of
+    these same parameters (or Polygon.regular's validation of num_sides)
+    would otherwise get a chance to run first.
 
     Args:
         num_sides: Number of sides of the initial regular polygon.
@@ -122,18 +130,6 @@ def plot_polygons(
             f"{sorted(_BACKEND_MODULES)}."
         )
     renderer = importlib.import_module(_BACKEND_MODULES[backend])
-
-    # Validated here, before eps_over_r/iterations_until_imperceptible run:
-    # both call shrink_factor(num_sides, ratio) internally to auto-compute
-    # iterations, before iterate_polygon's own validation of these same
-    # parameters ever gets a chance to run. A zero figure_size, or a ratio
-    # of exactly 0.0 or 1.0, would otherwise reach that pixel/log math
-    # first and crash with a raw ZeroDivisionError. Polygon.regular below
-    # is what actually validates num_sides for this same reason — keep it
-    # ahead of the iterations is None branch, not just as a construction
-    # step.
-    validate_figure_size(figure_size)
-    validate_ratio(ratio)
 
     polygon = Polygon.regular(num_sides)
 
