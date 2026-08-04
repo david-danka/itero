@@ -100,6 +100,18 @@ def test_resolve_iterations_rejects_invalid_num_sides_before_auto_compute(num_si
         resolve_iterations(num_sides, ratio, None, (4, 4), backend="matplotlib")
 
 
+def test_resolve_iterations_rejects_invalid_num_sides_even_with_explicit_iterations():
+    """resolve_iterations is now decorated with @validate_params, which
+    validates num_sides/ratio/figure_size unconditionally, before the
+    function body runs at all -- including on the early-return path for
+    an explicitly-given iterations value, which the old hand-written
+    validation (placed after that early return) never covered. Passing
+    both an invalid num_sides and an explicit iterations used to
+    silently return the iterations value with no complaint at all."""
+    with pytest.raises(InvalidNumSidesError):
+        resolve_iterations(0, 0.2, 5, (4, 4), backend="matplotlib")
+
+
 @pytest.mark.parametrize("backend", ["matplotlib", "plotly"])
 def test_auto_iterations_matches_manual_calculation(backend):
     num_sides, ratio, figure_size = 6, 0.15, (5, 5)
