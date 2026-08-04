@@ -2,15 +2,12 @@ from itero.plotting._plotly._iterations import plotly_eps_over_r
 
 
 def test_matches_manual_calculation():
-    figure_width, figure_height, dpi, linewidth = 8.0, 8.0, 100.0, 1.5
+    figure_width, figure_height, linewidth = 8.0, 8.0, 1.5
 
-    result = plotly_eps_over_r(figure_width, figure_height, dpi, linewidth)
+    result = plotly_eps_over_r(figure_width, figure_height, linewidth)
 
-    width = figure_width * dpi
-    height = figure_height * dpi
-    lw_pixels = linewidth / 72 * dpi
-    eps_pixels = lw_pixels / 2
-    expected = eps_pixels * 2 / min(width, height)
+    lw_inches = linewidth / 72
+    expected = lw_inches / min(figure_width, figure_height)
 
     assert result == expected
 

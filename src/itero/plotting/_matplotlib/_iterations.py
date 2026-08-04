@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 def matplotlib_eps_over_r(
     figure_width: float,
     figure_height: float,
-    dpi: float = 100.0,
     linewidth: float = 1.5,
 ) -> float:
     """Compute a Matplotlib-specific visibility threshold ratio.
@@ -18,10 +17,18 @@ def matplotlib_eps_over_r(
     read live from Matplotlib's current subplot rcParams, matching the
     default layout render_polygons produces.
 
+    Works entirely in inches; there is deliberately no dpi parameter.
+    Converting figure_width/figure_height and linewidth to a common pixel
+    space and then taking their ratio makes dpi cancel out exactly (see
+    docs/automatic_iteration_count.md for the full derivation) — it's a
+    positive common factor of the numerator and every term inside the
+    min() in the denominator, so it never affects the result. A dpi
+    parameter here would be pure surface area with zero effect on the
+    return value, which is worse than not having one.
+
     Args:
         figure_width: Figure width in inches.
         figure_height: Figure height in inches.
-        dpi: Dots per inch used to convert inches to pixels.
         linewidth: Stroke width in points used to judge visual significance.
 
     Returns:
@@ -30,22 +37,17 @@ def matplotlib_eps_over_r(
         itero.plotting.iterations_until_imperceptible.
     """
 
-    # Figure size in pixels
-    width = figure_width * dpi
-    height = figure_height * dpi
-
-    # Axes size in pixels, from Matplotlib's current default subplot layout
+    # Axes size in inches, from Matplotlib's current default subplot layout
     axes_width_fraction = (
         plt.rcParams["figure.subplot.right"] - plt.rcParams["figure.subplot.left"]
     )
     axes_height_fraction = (
         plt.rcParams["figure.subplot.top"] - plt.rcParams["figure.subplot.bottom"]
     )
-    axes_width = width * axes_width_fraction
-    axes_height = height * axes_height_fraction
+    axes_width = figure_width * axes_width_fraction
+    axes_height = figure_height * axes_height_fraction
 
     # Gap-closing threshold
     # linewidth is in points (1pt = 1/72 inch)
-    lw_pixels = linewidth / 72 * dpi
-    eps_pixels = lw_pixels / 2
-    return eps_pixels * 2 / min(axes_height, axes_width)
+    lw_inches = linewidth / 72
+    return lw_inches / min(axes_height, axes_width)

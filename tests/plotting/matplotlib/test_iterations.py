@@ -4,23 +4,20 @@ from itero.plotting._matplotlib._iterations import matplotlib_eps_over_r
 
 
 def test_matches_manual_calculation():
-    figure_width, figure_height, dpi, linewidth = 8.0, 8.0, 100.0, 1.5
+    figure_width, figure_height, linewidth = 8.0, 8.0, 1.5
 
-    result = matplotlib_eps_over_r(figure_width, figure_height, dpi, linewidth)
+    result = matplotlib_eps_over_r(figure_width, figure_height, linewidth)
 
-    width = figure_width * dpi
-    height = figure_height * dpi
     axes_width_fraction = (
         plt.rcParams["figure.subplot.right"] - plt.rcParams["figure.subplot.left"]
     )
     axes_height_fraction = (
         plt.rcParams["figure.subplot.top"] - plt.rcParams["figure.subplot.bottom"]
     )
-    axes_width = width * axes_width_fraction
-    axes_height = height * axes_height_fraction
-    lw_pixels = linewidth / 72 * dpi
-    eps_pixels = lw_pixels / 2
-    expected = eps_pixels * 2 / min(axes_height, axes_width)
+    axes_width = figure_width * axes_width_fraction
+    axes_height = figure_height * axes_height_fraction
+    lw_inches = linewidth / 72
+    expected = lw_inches / min(axes_height, axes_width)
 
     assert result == expected
 

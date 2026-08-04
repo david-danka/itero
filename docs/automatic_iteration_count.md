@@ -178,9 +178,56 @@ journey from full size to invisible is always the same length.
 eps_over_R = (lw_pixels / 2) * (2.0 / min(axes_width, axes_height))
 ```
 
-### Step 8 — solving for $k$
+### Step 8 — dpi cancels too
 
-Everything up to here (Steps 1–7) is Matplotlib-specific — it's the only part
+Steps 1–7 route the calculation through pixels — $w_{px} = w_{in}\cdot\text{dpi}$,
+$h_{px} = h_{in}\cdot\text{dpi}$, $\ell_{px} = \frac{\text{linewidth}}{72}\cdot\text{dpi}$
+— but dpi never actually needs to survive to the final ratio. Substituting the
+pixel quantities back in terms of inches:
+
+$$\frac{\varepsilon}{R} = \frac{\ell_{px}}{\min(w_{ax},\,h_{ax})} = \frac{\dfrac{\text{linewidth}}{72}\cdot\text{dpi}}{\min\!\left(w_{in}\cdot\text{dpi}\cdot b_w,\ h_{in}\cdot\text{dpi}\cdot b_h\right)}$$
+
+dpi is a positive common factor of the numerator and of every term inside the
+$\min(\cdot)$ in the denominator. For any $a > 0$, $\min(ax, ay) = a\min(x,y)$,
+so it factors out of the $\min$ the same way it would out of a sum:
+
+$$\min\!\left(w_{in}\cdot\text{dpi}\cdot b_w,\ h_{in}\cdot\text{dpi}\cdot b_h\right) = \text{dpi} \cdot \min\!\left(w_{in}\cdot b_w,\ h_{in}\cdot b_h\right)$$
+
+Substituting back, dpi cancels top and bottom:
+
+$$\frac{\varepsilon}{R} = \frac{\dfrac{\text{linewidth}}{72}\cdot\text{dpi}}{\text{dpi}\cdot\min\!\left(w_{in}\cdot b_w,\ h_{in}\cdot b_h\right)} = \frac{\text{linewidth}/72}{\min\!\left(w_{in}\cdot b_w,\ h_{in}\cdot b_h\right)}$$
+
+$$\boxed{\frac{\varepsilon}{R} = \frac{\text{linewidth}/72}{\min\!\left(w_{in}\cdot b_w,\ h_{in}\cdot b_h\right)}}$$
+
+The same underlying reason $R$ cancelled in Step 7: dpi is a uniform positive
+rescaling applied to both the "gap" being measured ($\ell_{px}$) and the space
+it's measured against ($w_{ax}, h_{ax}$), so their ratio is blind to it.
+Concretely, `matplotlib_eps_over_r` takes no `dpi` parameter at all — the
+pixel language in Steps 1–7 is kept because it's the physically intuitive way
+to reason about "half a stroke width," but the implementation skips straight
+to inches, since converting to pixels and back is wasted arithmetic once you
+know the factor is going to cancel. A `dpi` parameter that provably has zero
+effect on the return value is worse than no parameter at all — it invites a
+caller to believe tuning it does something.
+
+For Plotly, the same cancellation is even more direct — there's no
+axes-fraction term to carry along:
+
+$$\frac{\varepsilon}{R} = \frac{\ell_{px}}{\min(w_{px},\,h_{px})} = \frac{\dfrac{\text{linewidth}}{72}\cdot\text{dpi}}{\min\!\left(w_{in}\cdot\text{dpi},\ h_{in}\cdot\text{dpi}\right)} = \frac{\text{linewidth}/72}{\min\!\left(w_{in},\,h_{in}\right)}$$
+
+```python
+def plotly_eps_over_r(figure_width: float, figure_height: float, linewidth: float = 1.5) -> float:
+    lw_inches = linewidth / 72
+    return lw_inches / min(figure_width, figure_height)
+```
+
+Note this is a *different* dpi than `render_polygons`'s own `dpi` parameter
+(Plotly backend only), which does matter — that one sets the actual pixel
+dimensions handed to Plotly's figure layout, not a ratio that cancels it out.
+
+### Step 9 — solving for $k$
+
+Everything up to here (Steps 1–8) is Matplotlib-specific — it's the only part
 that needs to know about figure size, DPI, or line width in points. This step
 isn't: given $\varepsilon/R$ from *any* source, the iteration count follows
 from `shrink_factor` alone. That's why it lives as its own backend-agnostic
@@ -213,30 +260,27 @@ return math.ceil(math.log(eps_over_R) / math.log(s))
 ### Full implementation
 
 Split across two functions, matching the Matplotlib-specific/backend-agnostic
-boundary from Step 8: `matplotlib_eps_over_r` (`itero.plotting._matplotlib`)
-does Steps 1–7, `iterations_until_imperceptible` (`itero.plotting`, no
-Matplotlib import at all) does Step 8.
+boundary from Step 9: `matplotlib_eps_over_r` (`itero.plotting._matplotlib`)
+does Steps 1–8, `iterations_until_imperceptible` (`itero.plotting`, no
+Matplotlib import at all) does Step 9. No `dpi` parameter, per Step 8 — it
+cancels out of the ratio exactly, so it's simply never computed at all.
 
 ```python
 def matplotlib_eps_over_r(
     figure_width: float, figure_height: float,
-    dpi: float = 100.0, linewidth: float = 1.5,
+    linewidth: float = 1.5,
 ) -> float:
-    width  = figure_width  * dpi
-    height = figure_height * dpi
-
     axes_width_fraction = (
         plt.rcParams["figure.subplot.right"] - plt.rcParams["figure.subplot.left"]
     )
     axes_height_fraction = (
         plt.rcParams["figure.subplot.top"] - plt.rcParams["figure.subplot.bottom"]
     )
-    axes_width  = width  * axes_width_fraction
-    axes_height = height * axes_height_fraction
+    axes_width  = figure_width  * axes_width_fraction
+    axes_height = figure_height * axes_height_fraction
 
-    lw_pixels  = (linewidth * dpi) / 72
-    eps_pixels = lw_pixels / 2
-    return eps_pixels * 2 / min(axes_width, axes_height)
+    lw_inches = linewidth / 72
+    return lw_inches / min(axes_width, axes_height)
 
 
 def iterations_until_imperceptible(n: int, t: float, eps_over_r: float) -> int:
