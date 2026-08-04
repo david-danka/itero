@@ -1,13 +1,15 @@
 import math
 
 from hypothesis import assume, given
+import pytest
 
+from itero.core._primitives import Polygon
 from itero.core._transforms import (
     iterate_polygon,
     _transform_polygon,
     shrink_factor,
 )
-from itero.exceptions import DegeneratePolygonError
+from itero.exceptions import DegeneratePolygonError, InvalidIterationsError, InvalidRatioError
 
 from tests.helpers import float_tol
 from tests.strategies import (
@@ -15,6 +17,25 @@ from tests.strategies import (
     ratio_st,
     regular_polygon_st,
 )
+
+
+@pytest.mark.parametrize("ratio", [0.0, 1.0, -0.5, 1.5, "0.2", None])
+def test_rejects_invalid_ratio(ratio):
+    polygon = Polygon.regular(5)
+
+    with pytest.raises(InvalidRatioError):
+        iterate_polygon(polygon, t=ratio, iterations=5)
+
+
+@pytest.mark.parametrize("iterations", [-1, 5.5, "10", None])
+def test_rejects_invalid_iterations(iterations):
+    """Regression: a non-int iterations (e.g. 5.5) used to pass the
+    value-only `iterations < 0` check and then crash with a raw TypeError
+    at range(iterations)."""
+    polygon = Polygon.regular(5)
+
+    with pytest.raises(InvalidIterationsError):
+        iterate_polygon(polygon, t=0.2, iterations=iterations)
 
 
 @given(regular_polygon_st, ratio_st, iterations_st)

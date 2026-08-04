@@ -13,8 +13,8 @@ Typical usage:
 
 import math
 
-from itero.exceptions import InvalidRatioError, InvalidIterationsError
 from itero.core._primitives import Point, Polygon, PolygonSequence
+from itero.core._validate import validate_iterations, validate_ratio
 
 
 def _transform_polygon(polygon: Polygon, t: float) -> Polygon:
@@ -39,9 +39,8 @@ def _transform_polygon(polygon: Polygon, t: float) -> Polygon:
         >>> square = Polygon.regular(4)
         >>> rotated = transform_polygon(square, t=0.25)
     """
-    if not (0.0 < t < 1.0):
-        raise InvalidRatioError(f"Ratio must be between 0.0 and 1.0 (exclusive), got {t}.")
-    
+    validate_ratio(t)
+
     n = len(polygon.vertices)
     
     transformed_vertices = []
@@ -102,14 +101,9 @@ def iterate_polygon(polygon: Polygon, t: float, iterations: int,) -> PolygonSequ
         501
     """
 
-    if not (0.0 < t < 1.0):
-        raise InvalidRatioError(f"Ratio must be between 0.0 and 1.0 (exclusive), got {t}.")
-    if iterations < 0:
-        raise InvalidIterationsError(
-            "Iterations must be a whole number "
-            f"greater than or equal to 0, got {iterations}."
-        )
-    
+    validate_ratio(t)
+    validate_iterations(iterations)
+
     polygons = [polygon]
     for _ in range(iterations):
         polygons.append(_transform_polygon(polygons[-1], t))

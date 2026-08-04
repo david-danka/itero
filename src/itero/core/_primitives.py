@@ -10,6 +10,7 @@ from dataclasses import dataclass
 import math
 import sys
 
+from itero.core._validate import validate_num_sides
 from itero.exceptions import DegeneratePolygonError, InvalidNumSidesError
 
 
@@ -190,12 +191,8 @@ class Polygon:
             >>> triangle = Polygon.regular(3)
             >>> hexagon = Polygon.regular(6, radius=2.0, center=Point(1.0, 1.0))
         """
-        if not isinstance(num_sides, int) or num_sides < 3:
-            raise InvalidNumSidesError(
-                f"Number of sides must be a whole number"
-                f" greater than or equal to 3, got {num_sides}."
-            )
-        
+        validate_num_sides(num_sides)
+
         center = center or Point(0.0, 0.0)
         central_angle = 2 * math.pi / num_sides
 

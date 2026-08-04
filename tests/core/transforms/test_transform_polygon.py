@@ -3,6 +3,7 @@ import pytest
 
 from itero.core._primitives import Polygon
 from itero.core._transforms import _transform_polygon, shrink_factor
+from itero.exceptions import InvalidRatioError
 from tests.helpers import approx_between, float_tol, translate_polygon
 from tests.strategies import(
     num_sides_st,
@@ -12,6 +13,14 @@ from tests.strategies import(
     regular_polygon_st,
     translation_st,
 )
+
+
+@pytest.mark.parametrize("ratio", [0.0, 1.0, -0.5, 1.5, "0.2", None])
+def test_rejects_invalid_ratio(ratio):
+    polygon = Polygon.regular(5)
+
+    with pytest.raises(InvalidRatioError):
+        _transform_polygon(polygon, ratio)
 
 
 @given(regular_polygon_st, ratio_st)
