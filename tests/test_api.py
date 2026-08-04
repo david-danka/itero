@@ -123,10 +123,11 @@ def test_tiny_figure_size_does_not_crash_with_auto_iterations():
 
     Matplotlib only: at dpi=100, Plotly's own figure width (in pixels)
     must be >= 10, i.e. figure_size >= 0.1in -- comfortably above the
-    figure_size where eps_over_r ever reaches 1 (~0.02-0.03in). Plotly's
-    render_polygons therefore always hits its own raw, unwrapped
-    ValueError for a too-small figure_size before this bug is ever
-    reachable through it; that's a separate, pre-existing gap."""
+    figure_size where eps_over_r ever reaches 1 (~0.02-0.03in). Plotly
+    can never actually reach a negative auto-computed iteration count
+    through this pipeline as a result -- it always hits its own
+    (separately fixed) pixel-floor rejection first. See
+    test_tiny_figure_size_raises_for_plotly_pixel_floor below."""
     fig = plot_polygons(
         num_sides=5, ratio=0.2, iterations=None, figure_size=(0.02, 0.02),
         show=False, backend="matplotlib",
@@ -134,6 +135,19 @@ def test_tiny_figure_size_does_not_crash_with_auto_iterations():
 
     assert len(fig.axes[0].collections[0].get_paths()) == 1
     plt.close(fig)
+
+
+def test_tiny_figure_size_raises_for_plotly_pixel_floor():
+    """The same figure_size that Matplotlib renders fine (a 2x2px image)
+    is genuinely unrenderable by Plotly, independent of iteration count
+    -- Plotly's own go.Layout width/height floor is 10px per side. This
+    used to raise a raw, unwrapped ValueError from Plotly's own layout
+    validator; it must now be a clean InvalidFigureSizeError."""
+    with pytest.raises(InvalidFigureSizeError):
+        plot_polygons(
+            num_sides=5, ratio=0.2, iterations=None, figure_size=(0.02, 0.02),
+            show=False, backend="plotly",
+        )
 
 
 @pytest.mark.parametrize("backend", ["matplotlib", "plotly"])

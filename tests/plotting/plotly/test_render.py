@@ -29,6 +29,16 @@ def test_rejects_nan_figure_size(figure_size):
         render_polygons(_sequence(), figure_size, show=False)
 
 
+def test_rejects_figure_size_below_plotly_pixel_floor():
+    """Regression: a figure_size that passes validate_figure_size
+    (merely positive) can still be too small in pixels for Plotly's own
+    go.Layout width/height floor (>= 10px per side). This used to raise
+    a raw ValueError from Plotly's own layout validator instead of
+    InvalidFigureSizeError."""
+    with pytest.raises(InvalidFigureSizeError):
+        render_polygons(_sequence(), (0.02, 0.02), show=False)
+
+
 def test_returns_a_figure_with_requested_size():
     fig = render_polygons(_sequence(), (4, 4), dpi=100.0, show=False)
 

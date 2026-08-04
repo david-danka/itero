@@ -21,7 +21,11 @@ from itero.plotting import (
     validate_figure_size,
     validate_save_path,
 )
-from itero.plotting._plotly._validate import is_valid_plotly_cmap, is_valid_plotly_color
+from itero.plotting._plotly._validate import (
+    is_valid_plotly_cmap,
+    is_valid_plotly_color,
+    validate_plotly_figure_size,
+)
 from itero.plotting._plotly._colormap import apply_cmap
 
 
@@ -61,12 +65,16 @@ def render_polygons(
             Requires the optional kaleido package. If None, the figure
             is not saved. Defaults to None.
         dpi: Dots per inch used to convert figure_size to pixels.
+            figure_size * dpi must be at least 10px per side -- Plotly's
+            own width/height floor -- or this raises InvalidFigureSizeError
+            rather than letting Plotly's raw ValueError through.
 
     Returns:
         The populated Plotly Figure.
     """
 
     validate_figure_size(figure_size)
+    validate_plotly_figure_size(figure_size, dpi)
     if color is not None and not is_valid_plotly_color(color):
         raise InvalidColorError(f"'{color}' is not a valid Plotly color.")
     if cmap is not None and not is_valid_plotly_cmap(cmap):
