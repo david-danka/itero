@@ -76,11 +76,40 @@ def test_saves_to_disk(tmp_path):
     plt.close(fig)
 
 
-def test_wraps_save_failure(tmp_path):
+def test_rejects_missing_save_directory_before_building_anything(tmp_path):
+    """A missing parent directory is checked up front, so it fails fast
+    without ever constructing a figure — stronger than merely "doesn't
+    leak", nothing gets built in the first place."""
     bad_path = tmp_path / "missing" / "polygon.png"
+    before = set(plt.get_fignums())
 
     with pytest.raises(RenderingError):
         render_polygons(_sequence(), (4, 4), show=False, save_path=str(bad_path))
+
+    assert set(plt.get_fignums()) == before
+
+
+def test_rejects_unwritable_save_directory(tmp_path, monkeypatch):
+    monkeypatch.setattr("os.access", lambda *args, **kwargs: False)
+
+    with pytest.raises(RenderingError):
+        render_polygons(_sequence(), (4, 4), show=False, save_path=str(tmp_path / "polygon.png"))
+
+
+def test_wraps_late_save_failure_and_does_not_leak_a_figure(tmp_path):
+    """Regression: the directory-existence check can't catch every
+    savefig() failure — an unrecognized file extension only fails once
+    Matplotlib actually tries to write it, in a directory that's
+    perfectly valid and writable. That failure happens after the figure
+    is already built and drawn, so it needs its own close-before-raise,
+    not just the up-front directory check."""
+    bad_path = tmp_path / "polygon.bogusext"
+    before = set(plt.get_fignums())
+
+    with pytest.raises(RenderingError):
+        render_polygons(_sequence(), (4, 4), show=False, save_path=str(bad_path))
+
+    assert set(plt.get_fignums()) == before
 
 
 @pytest.mark.parametrize("kwargs", [

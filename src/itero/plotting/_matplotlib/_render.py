@@ -6,6 +6,8 @@ Each polygon in the sequence is drawn as a separate line, allowing the full
 iterative transformation to be visualised as an overlapping series of shapes.
 """
 
+import os
+
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 from matplotlib.pyplot import Figure
@@ -35,11 +37,20 @@ def render_polygons(
     """Render a PolygonSequence as an overlapping series of line plots.
 
     All inputs are validated before any Matplotlib figure is created, so a
-    bad color/cmap/alpha never leaves an orphaned figure behind. Each
-    polygon is drawn as a single continuous line; axes are hidden and
-    aspect ratio is locked to equal so the shapes are not distorted. The
-    figure is never closed here — it's returned live so the caller can
-    embed it (e.g. st.pyplot), save it, or close it themselves once done.
+    bad color/cmap/alpha/save_path never leaves an orphaned figure behind.
+    save_path's directory is checked for existence and writability up
+    front to fail fast on the common cases (typo'd path, wrong
+    directory) without building anything — but that check can't catch
+    everything (e.g. an unrecognized file extension only fails once
+    Matplotlib actually tries to write it), so a failure at the real
+    save is still caught and closes the figure before propagating, as a
+    safety net rather than the primary defense.
+
+    Each polygon is drawn as a single continuous line; axes are hidden
+    and aspect ratio is locked to equal so the shapes are not distorted.
+    On success the figure is never closed — it's returned live so the
+    caller can embed it (e.g. st.pyplot), save it, or close it
+    themselves once done.
 
     Args:
         polygons: The sequence of polygons to render. Typically the output
@@ -74,6 +85,12 @@ def render_polygons(
         raise InvalidColorMapError(f"'{cmap}' is not a valid Matplotlib colormap.")
     if not (0.0 <= alpha <= 1.0):
         raise InvalidAlphaError(f"Alpha must be between 0.0 and 1.0, got {alpha}.")
+    if save_path:
+        save_dir = os.path.dirname(save_path) or "."
+        if not os.path.isdir(save_dir):
+            raise RenderingError(f"Cannot save to '{save_path}': directory '{save_dir}' does not exist.")
+        if not os.access(save_dir, os.W_OK):
+            raise RenderingError(f"Cannot save to '{save_path}': directory '{save_dir}' is not writable.")
 
     fig, ax = plt.subplots(figsize=figure_size)
     ax.set_aspect("equal")
@@ -105,6 +122,10 @@ def render_polygons(
         try:
             fig.savefig(save_path, bbox_inches='tight', pad_inches=0)
         except (OSError, ValueError) as e:
+            # Close before raising: this figure is never reaching the
+            # caller, so it would otherwise be orphaned in Matplotlib's
+            # global figure registry forever.
+            plt.close(fig)
             raise RenderingError(f"Could not save figure to '{save_path}': {e}") from e
     if show:
         plt.show()
