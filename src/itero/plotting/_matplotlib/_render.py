@@ -37,14 +37,16 @@ def render_polygons(
     """Render a PolygonSequence as an overlapping series of line plots.
 
     All inputs are validated before any Matplotlib figure is created, so a
-    bad color/cmap/alpha/save_path never leaves an orphaned figure behind.
-    save_path's directory is checked for existence and writability up
-    front to fail fast on the common cases (typo'd path, wrong
-    directory) without building anything — but that check can't catch
-    everything (e.g. an unrecognized file extension only fails once
-    Matplotlib actually tries to write it), so a failure at the real
-    save is still caught and closes the figure before propagating, as a
-    safety net rather than the primary defense.
+    bad color/cmap/alpha never leaves an orphaned figure behind.
+    save_path's directory is checked for existence up front to fail fast
+    on the common case (typo'd path, wrong directory) without building
+    anything. Write permission is deliberately not pre-checked —
+    os.access(path, os.W_OK) is unreliable on Windows for this (verified:
+    it reports a directory as writable even with an explicit deny-write
+    ACL) — so a permission failure, like any other savefig() failure
+    (e.g. an unrecognized file extension), is only caught once the real
+    save is attempted, at which point the figure is closed before the
+    error propagates.
 
     Each polygon is drawn as a single continuous line; axes are hidden
     and aspect ratio is locked to equal so the shapes are not distorted.
@@ -89,8 +91,6 @@ def render_polygons(
         save_dir = os.path.dirname(save_path) or "."
         if not os.path.isdir(save_dir):
             raise RenderingError(f"Cannot save to '{save_path}': directory '{save_dir}' does not exist.")
-        if not os.access(save_dir, os.W_OK):
-            raise RenderingError(f"Cannot save to '{save_path}': directory '{save_dir}' is not writable.")
 
     fig, ax = plt.subplots(figsize=figure_size)
     ax.set_aspect("equal")
