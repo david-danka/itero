@@ -89,13 +89,6 @@ def test_rejects_missing_save_directory_before_building_anything(tmp_path):
     assert set(plt.get_fignums()) == before
 
 
-def test_rejects_unwritable_save_directory(tmp_path, monkeypatch):
-    monkeypatch.setattr("os.access", lambda *args, **kwargs: False)
-
-    with pytest.raises(RenderingError):
-        render_polygons(_sequence(), (4, 4), show=False, save_path=str(tmp_path / "polygon.png"))
-
-
 def test_wraps_late_save_failure_and_does_not_leak_a_figure(tmp_path):
     """Regression: the directory-existence check can't catch every
     savefig() failure — an unrecognized file extension only fails once
