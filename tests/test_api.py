@@ -3,7 +3,7 @@ import plotly.graph_objects as go
 import pytest
 from matplotlib.figure import Figure as MatplotlibFigure
 
-from itero.api import plot_polygons
+from itero.api import plot_polygons, resolve_iterations
 from itero.exceptions import InvalidBackendError, InvalidFigureSizeError, InvalidRatioError
 from itero.plotting import iterations_until_imperceptible
 from itero.plotting._matplotlib import eps_over_r as matplotlib_eps_over_r
@@ -49,6 +49,19 @@ def test_explicit_iterations_produces_that_many_polygons():
     )
 
     assert len(fig.data) == 8  # iterations + 1
+
+
+def test_resolve_iterations_passes_explicit_value_through_unchanged():
+    assert resolve_iterations(5, 0.2, 42, (4, 4)) == 42
+
+
+@pytest.mark.parametrize("backend", ["matplotlib", "plotly"])
+def test_resolve_iterations_auto_computes_when_none(backend):
+    eps_fn = matplotlib_eps_over_r if backend == "matplotlib" else plotly_eps_over_r
+    expected_eps = eps_fn(5, 5, linewidth=1.5)
+    expected = iterations_until_imperceptible(6, 0.15, expected_eps)
+
+    assert resolve_iterations(6, 0.15, None, (5, 5), backend=backend) == expected
 
 
 @pytest.mark.parametrize("backend", ["matplotlib", "plotly"])

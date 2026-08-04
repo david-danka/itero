@@ -12,8 +12,8 @@ Typical usage:
 import argparse
 import sys
 
-from itero.exceptions import PolygonIterError
-from itero.api import plot_polygons
+from itero.exceptions import InvalidIterationsError, PolygonIterError
+from itero.api import plot_polygons, resolve_iterations
 
 
 MAX_ITERATIONS = 10_000
@@ -142,10 +142,27 @@ def cli() -> None:
         parser.error(f"--iterations must be <= {MAX_ITERATIONS}, got {args.iterations}.")
 
     try:
+        # args.iterations is only checked against MAX_ITERATIONS above
+        # when the user supplies it explicitly -- that check is skipped
+        # for the (documented, common) default of omitting --iterations
+        # entirely. Resolving it here, before plot_polygons ever builds a
+        # single polygon, applies the same guardrail to the auto-computed
+        # count: a small --ratio combined with a large --num-sides can
+        # make it explode into the hundreds of millions.
+        iterations = resolve_iterations(
+            args.num_sides, args.ratio, args.iterations, args.figure_size, args.backend,
+        )
+        if iterations > MAX_ITERATIONS:
+            raise InvalidIterationsError(
+                f"Auto-computed iterations ({iterations}) exceeds the "
+                f"maximum of {MAX_ITERATIONS}. Pass an explicit "
+                "--iterations to override this limit."
+            )
+
         plot_polygons(
             num_sides=args.num_sides,
             ratio=args.ratio,
-            iterations=args.iterations,
+            iterations=iterations,
             figure_size=args.figure_size,
             cmap=args.cmap,
             color=args.color,

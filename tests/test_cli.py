@@ -107,13 +107,40 @@ def test_iterations_over_max_errors(monkeypatch, capsys):
     assert "--iterations" in capsys.readouterr().err
 
 
+def test_auto_iterations_over_max_errors(monkeypatch, capsys):
+    """Regression: omitting --iterations (the documented default --
+    'computed automatically to fill the figure') used to bypass
+    MAX_ITERATIONS entirely, since the CLI-side check only looked at an
+    explicitly-passed args.iterations. A small --ratio combined with a
+    large --num-sides made the auto-computed count blow up into the
+    hundreds of millions with nothing to catch it."""
+    monkeypatch.setattr(
+        cli_module.sys, "argv",
+        ["itero", "--num-sides", "1000", "--ratio", "0.001", "--no-show", "--save-path", "x.png"],
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        cli()
+
+    assert exc_info.value.code == 1
+    assert "Auto-computed iterations" in capsys.readouterr().err
+
+
 def test_num_sides_at_max_is_allowed(monkeypatch):
-    """MAX_SIDES itself must not be rejected -- only values strictly above it."""
+    """MAX_SIDES itself must not be rejected -- only values strictly above
+    it. --iterations is given explicitly here to isolate that from the
+    separate auto-computed-iterations guardrail: at num_sides=MAX_SIDES,
+    the default --ratio auto-computes well over MAX_ITERATIONS on its
+    own, which is a real (and correct) rejection, just not the one this
+    test is about."""
     calls = []
     monkeypatch.setattr(cli_module, "plot_polygons", lambda **kwargs: calls.append(kwargs))
     monkeypatch.setattr(
         cli_module.sys, "argv",
-        ["itero", "--num-sides", str(cli_module.MAX_SIDES), "--no-show", "--save-path", "x.png"],
+        [
+            "itero", "--num-sides", str(cli_module.MAX_SIDES), "--iterations", "10",
+            "--no-show", "--save-path", "x.png",
+        ],
     )
 
     cli()

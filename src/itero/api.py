@@ -21,6 +21,59 @@ _BACKEND_MODULES = {
 }
 
 
+def resolve_iterations(
+    num_sides: int,
+    ratio: float,
+    iterations: int | None,
+    figure_size: tuple[float, float],
+    backend: str = "matplotlib",
+) -> int:
+    """Return the iteration count plot_polygons would use.
+
+    If iterations is given explicitly, returns it unchanged -- no
+    upper bound of any kind is applied here. If None, computes the same
+    auto-fill estimate plot_polygons uses internally: how many
+    iterations before the shape stops changing visibly, for the given
+    backend's rendering geometry. This does no rendering and builds no
+    polygons, so it's cheap to call up front -- e.g. to sanity-check the
+    count before committing to a potentially expensive iterate_polygon
+    call, which is exactly what cli.py does to enforce its own
+    MAX_ITERATIONS guardrail before running the real pipeline.
+
+    Args:
+        num_sides: Number of sides of the polygon.
+        ratio: Interpolation ratio for each transformation step.
+        iterations: Explicit iteration count, or None to auto-compute.
+        figure_size: Figure dimensions in inches as (width, height).
+        backend: Rendering backend whose geometry to estimate against —
+            one of "matplotlib" or "plotly".
+
+    Returns:
+        The resolved iteration count.
+    """
+    if iterations is not None:
+        return iterations
+
+    if backend not in _BACKEND_MODULES:
+        raise InvalidBackendError(
+            f"Unknown backend {backend!r}; expected one of "
+            f"{sorted(_BACKEND_MODULES)}."
+        )
+    renderer = importlib.import_module(_BACKEND_MODULES[backend])
+
+    # Validated here, before eps_over_r/iterations_until_imperceptible run:
+    # both call shrink_factor(num_sides, ratio) internally, before
+    # iterate_polygon's own validation of these same parameters ever gets
+    # a chance to run. A zero figure_size, or a ratio of exactly 0.0 or
+    # 1.0, would otherwise reach that pixel/log math first and crash with
+    # a raw ZeroDivisionError.
+    validate_figure_size(figure_size)
+    validate_ratio(ratio)
+
+    eps_over_r = renderer.eps_over_r(*figure_size, linewidth=1.5)
+    return iterations_until_imperceptible(num_sides, ratio, eps_over_r)
+
+
 def plot_polygons(
     num_sides: int,
     ratio: float,
@@ -81,9 +134,7 @@ def plot_polygons(
 
     polygon = Polygon.regular(num_sides)
 
-    if iterations is None:
-        eps_over_r = renderer.eps_over_r(*figure_size, linewidth=1.5)
-        iterations = iterations_until_imperceptible(num_sides, ratio, eps_over_r)
+    iterations = resolve_iterations(num_sides, ratio, iterations, figure_size, backend)
 
     polygons = iterate_polygon(
         polygon,
