@@ -4,7 +4,12 @@ import pytest
 from matplotlib.figure import Figure as MatplotlibFigure
 
 from itero.api import plot_polygons, resolve_iterations
-from itero.exceptions import InvalidBackendError, InvalidFigureSizeError, InvalidRatioError
+from itero.exceptions import (
+    InvalidBackendError,
+    InvalidColorSpecError,
+    InvalidFigureSizeError,
+    InvalidRatioError,
+)
 from itero.plotting import iterations_until_imperceptible
 from itero.plotting._matplotlib import eps_over_r as matplotlib_eps_over_r
 from itero.plotting._plotly import eps_over_r as plotly_eps_over_r
@@ -49,6 +54,19 @@ def test_explicit_iterations_produces_that_many_polygons():
     )
 
     assert len(fig.data) == 8  # iterations + 1
+
+
+@pytest.mark.parametrize("backend", ["matplotlib", "plotly"])
+def test_cmap_and_color_together_raises(backend):
+    """Regression: cmap+color mutual exclusivity was only enforced by
+    cli.py's own argparse-level check (--cmap/--color), not the library.
+    A direct call to plot_polygons with both used to silently let color
+    win and drop cmap with no feedback at all."""
+    with pytest.raises(InvalidColorSpecError):
+        plot_polygons(
+            num_sides=5, ratio=0.2, iterations=5, figure_size=(4, 4),
+            cmap="plasma", color="red", show=False, backend=backend,
+        )
 
 
 def test_resolve_iterations_passes_explicit_value_through_unchanged():

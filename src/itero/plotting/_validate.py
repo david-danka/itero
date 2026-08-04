@@ -3,7 +3,7 @@
 import os
 
 from itero._validation import validate_range
-from itero.exceptions import InvalidFigureSizeError, RenderingError
+from itero.exceptions import InvalidColorSpecError, InvalidFigureSizeError, RenderingError
 
 
 def validate_figure_size(figure_size: tuple[float, float]) -> None:
@@ -42,3 +42,22 @@ def validate_save_path(save_path: str) -> None:
     save_dir = os.path.dirname(save_path) or "."
     if not os.path.isdir(save_dir):
         raise RenderingError(f"Cannot save to '{save_path}': directory '{save_dir}' does not exist.")
+
+
+def validate_color_spec(cmap: str | None, color: str | None) -> None:
+    """Raise InvalidColorSpecError if both cmap and color are given.
+
+    Without this, both backends' render_polygons silently let color win
+    and dropped cmap with no feedback at all -- reachable by any direct
+    caller of plot_polygons/render_polygons, since this was previously
+    enforced only by cli.py's own argparse-level check, not the library
+    itself.
+
+    Args:
+        cmap: Colormap/colorscale name, or None.
+        color: Fixed line colour, or None.
+    """
+    if cmap is not None and color is not None:
+        raise InvalidColorSpecError(
+            f"cmap={cmap!r} and color={color!r} cannot both be given; choose one."
+        )

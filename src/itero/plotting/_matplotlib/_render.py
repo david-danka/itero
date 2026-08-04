@@ -21,6 +21,7 @@ from itero.exceptions import (
 from itero.plotting import (
     distances_from_centroid,
     polygon_to_line,
+    validate_color_spec,
     validate_figure_size,
     validate_save_path,
 )
@@ -83,6 +84,7 @@ def render_polygons(
     """
 
     validate_figure_size(figure_size)
+    validate_color_spec(cmap, color)
     if color is not None and not is_valid_matplotlib_color(color):
         raise InvalidColorError(f"'{color}' is not a valid Matplotlib color.")
     if cmap is not None and not is_valid_matplotlib_cmap(cmap):

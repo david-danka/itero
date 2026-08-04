@@ -6,6 +6,7 @@ from itero.exceptions import (
     InvalidAlphaError,
     InvalidColorError,
     InvalidColorMapError,
+    InvalidColorSpecError,
     InvalidFigureSizeError,
     RenderingError,
 )
@@ -64,6 +65,14 @@ def test_rejects_invalid_color():
 def test_rejects_invalid_cmap():
     with pytest.raises(InvalidColorMapError):
         render_polygons(_sequence(), (4, 4), cmap="not-a-real-cmap", show=False)
+
+
+def test_rejects_cmap_and_color_together():
+    """Regression: cmap+color mutual exclusivity was only enforced by
+    cli.py's argparse-level check. Calling render_polygons directly with
+    both silently let color win and dropped cmap with no feedback."""
+    with pytest.raises(InvalidColorSpecError):
+        render_polygons(_sequence(), (4, 4), cmap="plasma", color="red", show=False)
 
 
 @pytest.mark.parametrize("alpha", [-0.1, 1.1, float("nan"), "0.5", None])

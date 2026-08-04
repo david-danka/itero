@@ -1,7 +1,7 @@
 import pytest
 
-from itero.exceptions import InvalidFigureSizeError, RenderingError
-from itero.plotting._validate import validate_figure_size, validate_save_path
+from itero.exceptions import InvalidColorSpecError, InvalidFigureSizeError, RenderingError
+from itero.plotting._validate import validate_color_spec, validate_figure_size, validate_save_path
 
 
 @pytest.mark.parametrize("figure_size", [(-1, 4), (4, -1), (0, 4), (4, 0), (0, 0)])
@@ -40,3 +40,13 @@ def test_validate_save_path_accepts_existing_directory(tmp_path):
 def test_validate_save_path_accepts_bare_filename(monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)
     validate_save_path("out.png")  # dirname is "", falls back to "."
+
+
+def test_validate_color_spec_rejects_both_given():
+    with pytest.raises(InvalidColorSpecError):
+        validate_color_spec("plasma", "red")
+
+
+@pytest.mark.parametrize("cmap,color", [(None, None), ("plasma", None), (None, "red")])
+def test_validate_color_spec_accepts_at_most_one(cmap, color):
+    validate_color_spec(cmap, color)  # should not raise
