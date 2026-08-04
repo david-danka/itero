@@ -8,7 +8,7 @@ iterative transformation to be visualised as an overlapping series of shapes.
 
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
-from matplotlib.pyplot import Axes, Figure
+from matplotlib.pyplot import Figure
 
 from itero.core import PolygonSequence
 from itero.exceptions import (
@@ -23,36 +23,37 @@ from itero.plotting._matplotlib._validate import is_valid_matplotlib_cmap, is_va
 from itero.plotting._matplotlib._colormap import apply_cmap
 
 
-def build_figure(figure_size: tuple[int, int]) -> tuple[Figure, Axes]:
-    """Create and return an empty figure and axes, ready for plotting."""
+def build_figure(figure_size: tuple[float, float]) -> Figure:
+    """Create and return an empty figure, ready for plotting."""
     if figure_size[0] < 0 or figure_size[1] < 0:
         raise InvalidFigureSizeError(f"Figure width and height must be positive, got {figure_size}.")
 
-    fig, ax = plt.subplots(figsize = figure_size)
+    fig, ax = plt.subplots(figsize=figure_size)
     ax.set_aspect("equal")
     ax.axis("off")
-    return fig, ax
+    return fig
 
 
 def draw_polygons(
-    polygons: PolygonSequence, fig: Figure, ax: Axes,
+    polygons: PolygonSequence, fig: Figure,
     cmap: str | None = None,
     color: str | None = None,
     alpha: float = 1.0,
     show: bool = True,
     save_path: str | None = None,
-) -> None:
+) -> Figure:
     """Render a PolygonSequence as an overlapping series of line plots.
 
     Each polygon is drawn as a single continuous line using its x and y
     coordinate lists. Axes are hidden and aspect ratio is locked to equal
-    so the shapes are not distorted.
+    so the shapes are not distorted. The figure is never closed here —
+    it's returned live so the caller can embed it (e.g. st.pyplot), save
+    it, or close it themselves once done.
 
     Args:
         polygons: The sequence of polygons to render. Typically the output
             of iterate_polygon.
-        fig: Matplotlib Figure containing the axes to draw on.
-        ax: Matplotlib Axes where the lines should be added.
+        fig: Matplotlib Figure produced by build_figure.
         cmap: Optional Matplotlib colormap name for gradient colouring.
         color: Line colour for all polygons. Accepts any value supported
             by Matplotlib (named colours, hex strings, RGB tuples, etc.).
@@ -65,11 +66,14 @@ def draw_polygons(
             from the extension (e.g. '.png', '.svg', '.pdf'). If None,
             the figure is not saved. Defaults to None.
 
+    Returns:
+        The populated Matplotlib Figure.
+
     Example:
         >>> polygon = Polygon.regular(6)
         >>> sequence = iterate_polygon(polygon, t=0.1, iterations=200)
-        >>> fig, ax = build_figure((8, 8))
-        >>> draw_polygons(sequence, fig, ax, color='indigo', alpha=0.15)
+        >>> fig = build_figure((8, 8))
+        >>> draw_polygons(sequence, fig, color='indigo', alpha=0.15)
     """
 
     if color is not None and not is_valid_matplotlib_color(color):
@@ -79,6 +83,7 @@ def draw_polygons(
     if not (0.0 <= alpha <= 1.0):
         raise InvalidAlphaError(f"Alpha must be between 0.0 and 1.0, got {alpha}.")
 
+    ax = fig.axes[0]
     fig.canvas.manager.set_window_title("Polygon sequence plot")
 
     if cmap is None and color is None:
@@ -102,18 +107,6 @@ def draw_polygons(
     ax.add_collection(collection)
     ax.autoscale()
 
-    _finalize_figure(fig, save_path, show)
-
-
-def _finalize_figure(fig: Figure, save_path: str | None, show: bool) -> None:
-    """Save and/or display the final plot before closing the figure.
-
-    Args:
-        fig: Matplotlib Figure to finalize.
-        save_path: Optional output path. If provided, the figure is written to disk.
-        show: Whether to display the figure interactively.
-    """
-
     if save_path:
         try:
             fig.savefig(save_path, bbox_inches='tight', pad_inches=0)
@@ -122,4 +115,4 @@ def _finalize_figure(fig: Figure, save_path: str | None, show: bool) -> None:
     if show:
         plt.show()
 
-    plt.close(fig)
+    return fig

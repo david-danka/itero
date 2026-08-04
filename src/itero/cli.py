@@ -67,7 +67,8 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         metavar="CMAP",
         help=(
-            "Colormap. Accepts any Matplotlib colormap string (e.g. 'viridis')."
+            "Colormap/colorscale name (e.g. 'viridis'), in the naming "
+            "scheme of whichever --backend is selected."
         ),
     )
     parser.add_argument(
@@ -75,7 +76,10 @@ def build_parser() -> argparse.ArgumentParser:
         type=str,
         default=None,
         metavar="COLOR",
-        help="Line colour. Accepts any Matplotlib colour string (e.g. 'red', '#ff0000').",
+        help=(
+            "Line colour (e.g. 'red', '#ff0000'), accepted by whichever "
+            "--backend is selected."
+        ),
     )
     parser.add_argument(
         "-a", "--alpha",
@@ -104,7 +108,14 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Suppress the interactive plot window. Useful when only saving to disk.",
     )
- 
+    parser.add_argument(
+        "--backend",
+        type=str,
+        default="matplotlib",
+        choices=["matplotlib", "plotly"],
+        help="Rendering backend to use.",
+    )
+
     return parser
 
 def cli() -> None:
@@ -134,7 +145,8 @@ def cli() -> None:
             color=args.color,
             alpha=args.alpha,
             show=not args.no_show,
-            save_path=args.save_path
+            save_path=args.save_path,
+            backend=args.backend,
         )
 
     except PolygonIterError as e:
