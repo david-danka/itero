@@ -91,3 +91,17 @@ def test_wraps_save_failure_without_kaleido(monkeypatch):
 
     with pytest.raises(RenderingError):
         render_polygons(_sequence(), (4, 4), show=False, save_path="polygon.png")
+
+
+def test_wraps_save_failure_for_missing_directory(tmp_path):
+    """Regression: write_image raises FileNotFoundError (an OSError
+    subclass) for a missing directory, not ValueError. The except clause
+    here only caught ValueError, so this leaked as a raw, unhandled
+    traceback all the way through the CLI (a real PermissionError from
+    a write-protected directory behaves the same way — also OSError,
+    also previously uncaught)."""
+    pytest.importorskip("kaleido")
+    bad_path = tmp_path / "missing" / "polygon.png"
+
+    with pytest.raises(RenderingError):
+        render_polygons(_sequence(), (4, 4), show=False, save_path=str(bad_path))
