@@ -6,8 +6,12 @@ readme = "README.md"
 requires-python = ">=3.10"
 authors = [{name = "David Danka"}]
 dependencies = [
-    "matplotlib==3.10.8"
+    "matplotlib==3.10.8",
+    "plotly==6.8.0"
 ]
+
+[project.optional-dependencies]
+image-export = ["kaleido"]
 
 [build-system]
 requires = ["setuptools"]
