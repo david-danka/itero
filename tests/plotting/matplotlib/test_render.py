@@ -1,8 +1,9 @@
 import matplotlib.pyplot as plt
 import pytest
 
-from itero.core import Polygon, iterate_polygon
+from itero.core import Point, Polygon, PolygonSequence, iterate_polygon
 from itero.exceptions import (
+    DegeneratePolygonError,
     InvalidAlphaError,
     InvalidColorError,
     InvalidColorMapError,
@@ -145,3 +146,35 @@ def test_validation_errors_do_not_leak_a_figure(kwargs):
 
     after = set(plt.get_fignums())
     assert after == before
+
+
+def test_degenerate_polygon_data_does_not_leak_a_figure():
+    """Regression: a DegeneratePolygonError from distances_from_centroid
+    (only discoverable by actually processing the polygon data, not by
+    validating parameters up front) surfaced after plt.subplots() had
+    already created a figure, and nothing closed it -- unlike the
+    save_path/color/cmap/alpha cases above, this isn't a parameter that
+    can be checked before allocating; it can only be caught once
+    something starts using the data."""
+    degenerate = Polygon([Point(0.0, 0.0), Point(1.0, 0.0), Point(2.0, 0.0)])
+    seq = PolygonSequence([degenerate], t=0.2, iterations=0)
+    before = set(plt.get_fignums())
+
+    with pytest.raises(DegeneratePolygonError):
+        render_polygons(seq, (4, 4), show=False)
+
+    assert set(plt.get_fignums()) == before
+
+
+def test_empty_sequence_does_not_leak_a_figure():
+    """A PolygonSequence with no polygons can only be constructed by
+    bypassing iterate_polygon (which always includes the original
+    polygon) -- e.g. PolygonSequence([], ...) -- but render_polygons
+    should still fail cleanly, not leak, for it."""
+    empty = PolygonSequence([], t=0.2, iterations=0)
+    before = set(plt.get_fignums())
+
+    with pytest.raises(IndexError):
+        render_polygons(empty, (4, 4), show=False)
+
+    assert set(plt.get_fignums()) == before

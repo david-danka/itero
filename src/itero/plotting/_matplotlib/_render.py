@@ -56,7 +56,13 @@ def render_polygons(
     and aspect ratio is locked to equal so the shapes are not distorted.
     On success the figure is never closed — it's returned live so the
     caller can embed it (e.g. st.pyplot), save it, or close it
-    themselves once done.
+    themselves once done. On any failure once the figure exists —
+    whether a known one (e.g. a savefig() failure) or not (e.g. a
+    DegeneratePolygonError surfacing from deep inside polygon data
+    that's only discoverable by processing it, not by validating
+    parameters up front) — the figure is closed before the error
+    propagates, so nothing can be orphaned in Matplotlib's global
+    figure registry.
 
     Args:
         polygons: The sequence of polygons to render. Typically the output
@@ -94,41 +100,48 @@ def render_polygons(
         validate_save_path(save_path)
 
     fig, ax = plt.subplots(figsize=figure_size)
-    ax.set_aspect("equal")
-    ax.axis("off")
-    fig.canvas.manager.set_window_title("Polygon sequence plot")
+    try:
+        ax.set_aspect("equal")
+        ax.axis("off")
+        fig.canvas.manager.set_window_title("Polygon sequence plot")
 
-    if cmap is None and color is None:
-        cmap = "viridis"
+        if cmap is None and color is None:
+            cmap = "viridis"
 
-    closed_line_chains = [polygon_to_line(p) for p in polygons]
-    if color is not None:
-        collection = LineCollection(
-            closed_line_chains, color=color, alpha=alpha
-        )
-    else:
-        distances = distances_from_centroid(polygons)
-        colors = apply_cmap(distances, cmap, invert=True)
+        closed_line_chains = [polygon_to_line(p) for p in polygons]
+        if color is not None:
+            collection = LineCollection(
+                closed_line_chains, color=color, alpha=alpha
+            )
+        else:
+            distances = distances_from_centroid(polygons)
+            colors = apply_cmap(distances, cmap, invert=True)
 
-        collection = LineCollection(
-            closed_line_chains,
-            colors=colors,
-            alpha=alpha
-        )
+            collection = LineCollection(
+                closed_line_chains,
+                colors=colors,
+                alpha=alpha
+            )
 
-    ax.add_collection(collection)
-    ax.autoscale()
+        ax.add_collection(collection)
+        ax.autoscale()
 
-    if save_path:
-        try:
-            fig.savefig(save_path, bbox_inches='tight', pad_inches=0)
-        except (OSError, ValueError) as e:
-            # Close before raising: this figure is never reaching the
-            # caller, so it would otherwise be orphaned in Matplotlib's
-            # global figure registry forever.
-            plt.close(fig)
-            raise RenderingError(f"Could not save figure to '{save_path}': {e}") from e
-    if show:
-        plt.show()
+        if save_path:
+            try:
+                fig.savefig(save_path, bbox_inches='tight', pad_inches=0)
+            except (OSError, ValueError) as e:
+                raise RenderingError(f"Could not save figure to '{save_path}': {e}") from e
+        if show:
+            plt.show()
+    except Exception:
+        # Close before propagating: this figure is never reaching the
+        # caller, so it would otherwise be orphaned in Matplotlib's
+        # global figure registry forever. Deliberately unconditional --
+        # not scoped to specific known exception types (e.g. the
+        # savefig() failure above, now just one case among many) -- so a
+        # failure discovered anywhere in this block, known or not,
+        # can't leak a figure.
+        plt.close(fig)
+        raise
 
     return fig
