@@ -15,7 +15,14 @@ def apply_cmap(values: np.ndarray, cmap: str, invert: bool = False) -> np.ndarra
     Returns:
         An array of RGBA colour values.
     """
-    normalized = (values - values.min()) / (values.max() - values.min())
+    value_range = values.max() - values.min()
+    if value_range == 0:
+        # All values identical (e.g. a single polygon, iterations=0) —
+        # no gradient to map. Use the colormap's midpoint for every
+        # entry rather than dividing by zero.
+        normalized = np.full_like(values, 0.5, dtype=float)
+    else:
+        normalized = (values - values.min()) / value_range
     if invert:
         normalized = 1 - normalized
     return colormaps.get_cmap(cmap)(normalized)

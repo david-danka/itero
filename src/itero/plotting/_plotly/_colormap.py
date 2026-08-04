@@ -15,7 +15,14 @@ def apply_cmap(values: np.ndarray, cmap: str, invert: bool = False) -> list[str]
     Returns:
         A list of RGB colour strings, one per input value.
     """
-    normalized = (values - values.min()) / (values.max() - values.min())
+    value_range = values.max() - values.min()
+    if value_range == 0:
+        # All values identical (e.g. a single polygon, iterations=0) —
+        # no gradient to map. Use the colorscale's midpoint for every
+        # entry rather than dividing by zero.
+        normalized = np.full_like(values, 0.5, dtype=float)
+    else:
+        normalized = (values - values.min()) / value_range
     if invert:
         normalized = 1 - normalized
     return pcolors.sample_colorscale(cmap.lower(), list(normalized))
