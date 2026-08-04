@@ -23,6 +23,12 @@ def test_rejects_non_positive_figure_size(figure_size):
         render_polygons(_sequence(), figure_size, show=False)
 
 
+@pytest.mark.parametrize("figure_size", [(float("nan"), 4), (4, float("nan"))])
+def test_rejects_nan_figure_size(figure_size):
+    with pytest.raises(InvalidFigureSizeError):
+        render_polygons(_sequence(), figure_size, show=False)
+
+
 def test_returns_a_figure_with_requested_size():
     fig = render_polygons(_sequence(), (4, 4), dpi=100.0, show=False)
 
@@ -67,10 +73,15 @@ def test_rejects_invalid_cmap():
         render_polygons(_sequence(), (4, 4), cmap="not-a-real-colorscale", show=False)
 
 
-@pytest.mark.parametrize("alpha", [-0.1, 1.1])
+@pytest.mark.parametrize("alpha", [-0.1, 1.1, float("nan"), "0.5", None])
 def test_rejects_invalid_alpha(alpha):
     with pytest.raises(InvalidAlphaError):
         render_polygons(_sequence(), (4, 4), alpha=alpha, show=False)
+
+
+def test_rejects_non_string_save_path():
+    with pytest.raises(RenderingError):
+        render_polygons(_sequence(), (4, 4), show=False, save_path=123)
 
 
 def test_saves_to_disk(tmp_path):

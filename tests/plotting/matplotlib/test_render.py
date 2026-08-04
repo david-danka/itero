@@ -23,6 +23,12 @@ def test_rejects_non_positive_figure_size(figure_size):
         render_polygons(_sequence(), figure_size, show=False)
 
 
+@pytest.mark.parametrize("figure_size", [(float("nan"), 4), (4, float("nan"))])
+def test_rejects_nan_figure_size(figure_size):
+    with pytest.raises(InvalidFigureSizeError):
+        render_polygons(_sequence(), figure_size, show=False)
+
+
 def test_returns_the_figure_live():
     fig = render_polygons(_sequence(), (4, 4), show=False)
 
@@ -60,7 +66,7 @@ def test_rejects_invalid_cmap():
         render_polygons(_sequence(), (4, 4), cmap="not-a-real-cmap", show=False)
 
 
-@pytest.mark.parametrize("alpha", [-0.1, 1.1])
+@pytest.mark.parametrize("alpha", [-0.1, 1.1, float("nan"), "0.5", None])
 def test_rejects_invalid_alpha(alpha):
     with pytest.raises(InvalidAlphaError):
         render_polygons(_sequence(), (4, 4), alpha=alpha, show=False)
@@ -74,6 +80,15 @@ def test_saves_to_disk(tmp_path):
     assert out.exists()
     assert out.stat().st_size > 0
     plt.close(fig)
+
+
+def test_rejects_non_string_save_path_before_building_anything():
+    before = set(plt.get_fignums())
+
+    with pytest.raises(RenderingError):
+        render_polygons(_sequence(), (4, 4), show=False, save_path=123)
+
+    assert set(plt.get_fignums()) == before
 
 
 def test_rejects_missing_save_directory_before_building_anything(tmp_path):

@@ -6,12 +6,11 @@ Each polygon in the sequence is drawn as a separate line, allowing the full
 iterative transformation to be visualised as an overlapping series of shapes.
 """
 
-import os
-
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 from matplotlib.pyplot import Figure
 
+from itero._validation import validate_range
 from itero.core import PolygonSequence
 from itero.exceptions import (
     InvalidAlphaError,
@@ -19,7 +18,12 @@ from itero.exceptions import (
     InvalidColorMapError,
     RenderingError,
 )
-from itero.plotting import distances_from_centroid, polygon_to_line, validate_figure_size
+from itero.plotting import (
+    distances_from_centroid,
+    polygon_to_line,
+    validate_figure_size,
+    validate_save_path,
+)
 from itero.plotting._matplotlib._validate import is_valid_matplotlib_cmap, is_valid_matplotlib_color
 from itero.plotting._matplotlib._colormap import apply_cmap
 
@@ -83,12 +87,9 @@ def render_polygons(
         raise InvalidColorError(f"'{color}' is not a valid Matplotlib color.")
     if cmap is not None and not is_valid_matplotlib_cmap(cmap):
         raise InvalidColorMapError(f"'{cmap}' is not a valid Matplotlib colormap.")
-    if not (0.0 <= alpha <= 1.0):
-        raise InvalidAlphaError(f"Alpha must be between 0.0 and 1.0, got {alpha}.")
+    validate_range(alpha, "alpha", InvalidAlphaError, ge=0.0, le=1.0)
     if save_path:
-        save_dir = os.path.dirname(save_path) or "."
-        if not os.path.isdir(save_dir):
-            raise RenderingError(f"Cannot save to '{save_path}': directory '{save_dir}' does not exist.")
+        validate_save_path(save_path)
 
     fig, ax = plt.subplots(figsize=figure_size)
     ax.set_aspect("equal")

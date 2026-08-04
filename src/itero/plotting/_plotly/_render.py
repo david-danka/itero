@@ -7,6 +7,7 @@ dispatch to either backend uniformly.
 
 import plotly.graph_objects as go
 
+from itero._validation import validate_range
 from itero.core import PolygonSequence
 from itero.exceptions import (
     InvalidAlphaError,
@@ -14,7 +15,12 @@ from itero.exceptions import (
     InvalidColorMapError,
     RenderingError,
 )
-from itero.plotting import distances_from_centroid, polygon_to_line, validate_figure_size
+from itero.plotting import (
+    distances_from_centroid,
+    polygon_to_line,
+    validate_figure_size,
+    validate_save_path,
+)
 from itero.plotting._plotly._validate import is_valid_plotly_cmap, is_valid_plotly_color
 from itero.plotting._plotly._colormap import apply_cmap
 
@@ -65,8 +71,9 @@ def render_polygons(
         raise InvalidColorError(f"'{color}' is not a valid Plotly color.")
     if cmap is not None and not is_valid_plotly_cmap(cmap):
         raise InvalidColorMapError(f"'{cmap}' is not a valid Plotly colorscale.")
-    if not (0.0 <= alpha <= 1.0):
-        raise InvalidAlphaError(f"Alpha must be between 0.0 and 1.0, got {alpha}.")
+    validate_range(alpha, "alpha", InvalidAlphaError, ge=0.0, le=1.0)
+    if save_path:
+        validate_save_path(save_path)
 
     fig = go.Figure()
     fig.update_layout(
