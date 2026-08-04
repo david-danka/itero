@@ -1,7 +1,17 @@
 import pytest
 
-from itero.exceptions import InvalidColorSpecError, InvalidFigureSizeError, RenderingError
-from itero.plotting._validate import validate_color_spec, validate_figure_size, validate_save_path
+from itero.exceptions import (
+    InvalidAlphaError,
+    InvalidColorSpecError,
+    InvalidFigureSizeError,
+    RenderingError,
+)
+from itero.plotting._validate import (
+    validate_alpha,
+    validate_color_spec,
+    validate_figure_size,
+    validate_save_path,
+)
 
 
 @pytest.mark.parametrize("figure_size", [(-1, 4), (4, -1), (0, 4), (4, 0), (0, 0)])
@@ -50,3 +60,14 @@ def test_validate_color_spec_rejects_both_given():
 @pytest.mark.parametrize("cmap,color", [(None, None), ("plasma", None), (None, "red")])
 def test_validate_color_spec_accepts_at_most_one(cmap, color):
     validate_color_spec(cmap, color)  # should not raise
+
+
+@pytest.mark.parametrize("alpha", [-0.1, 1.1, float("nan"), "0.5", None])
+def test_validate_alpha_rejects_invalid(alpha):
+    with pytest.raises(InvalidAlphaError):
+        validate_alpha(alpha)
+
+
+@pytest.mark.parametrize("alpha", [0.0, 0.5, 1.0])
+def test_validate_alpha_accepts_valid(alpha):
+    validate_alpha(alpha)  # should not raise

@@ -7,10 +7,9 @@ dispatch to either backend uniformly.
 
 import plotly.graph_objects as go
 
-from itero._validation import validate_range
+from itero._validate_params import validate_params
 from itero.core import PolygonSequence
 from itero.exceptions import (
-    InvalidAlphaError,
     InvalidColorError,
     InvalidColorMapError,
     RenderingError,
@@ -30,6 +29,7 @@ from itero.plotting._plotly._validate import (
 from itero.plotting._plotly._colormap import apply_cmap
 
 
+@validate_params("alpha")
 def render_polygons(
     polygons: PolygonSequence,
     figure_size: tuple[float, float],
@@ -42,7 +42,13 @@ def render_polygons(
 ) -> go.Figure:
     """Render a PolygonSequence as an overlapping series of Plotly line traces.
 
-    All inputs are validated before any Plotly figure is created. Each
+    All inputs are validated before any Plotly figure is created. alpha
+    is validated by @validate_params above, before this body runs at
+    all; the rest are checked inline below since they don't fit that
+    decorator's model -- color/cmap validity is backend-specific, their
+    mutual exclusivity is a two-parameter constraint, save_path is
+    optional in a way validate_save_path itself doesn't handle, and the
+    Plotly pixel-floor check needs dpi alongside figure_size. Each
     polygon is drawn as a single continuous line trace. Margins are
     zeroed and axes hidden so the whole figure is the drawing area,
     matching plotly_eps_over_r's assumption. The figure is returned live
@@ -81,7 +87,6 @@ def render_polygons(
         raise InvalidColorError(f"'{color}' is not a valid Plotly color.")
     if cmap is not None and not is_valid_plotly_cmap(cmap):
         raise InvalidColorMapError(f"'{cmap}' is not a valid Plotly colorscale.")
-    validate_range(alpha, "alpha", InvalidAlphaError, ge=0.0, le=1.0)
     if save_path:
         validate_save_path(save_path)
 

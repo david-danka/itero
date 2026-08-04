@@ -3,7 +3,12 @@
 import os
 
 from itero._validation import validate_range
-from itero.exceptions import InvalidColorSpecError, InvalidFigureSizeError, RenderingError
+from itero.exceptions import (
+    InvalidAlphaError,
+    InvalidColorSpecError,
+    InvalidFigureSizeError,
+    RenderingError,
+)
 
 
 def validate_figure_size(figure_size: tuple[float, float]) -> None:
@@ -42,6 +47,15 @@ def validate_save_path(save_path: str) -> None:
     save_dir = os.path.dirname(save_path) or "."
     if not os.path.isdir(save_dir):
         raise RenderingError(f"Cannot save to '{save_path}': directory '{save_dir}' does not exist.")
+
+
+def validate_alpha(alpha: float) -> None:
+    """Raise InvalidAlphaError unless alpha is in [0.0, 1.0].
+
+    Args:
+        alpha: Line opacity.
+    """
+    validate_range(alpha, "alpha", InvalidAlphaError, ge=0.0, le=1.0)
 
 
 def validate_color_spec(cmap: str | None, color: str | None) -> None:

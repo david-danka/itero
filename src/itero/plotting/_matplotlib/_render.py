@@ -10,10 +10,9 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 from matplotlib.pyplot import Figure
 
-from itero._validation import validate_range
+from itero._validate_params import validate_params
 from itero.core import PolygonSequence
 from itero.exceptions import (
-    InvalidAlphaError,
     InvalidColorError,
     InvalidColorMapError,
     RenderingError,
@@ -29,6 +28,7 @@ from itero.plotting._matplotlib._validate import is_valid_matplotlib_cmap, is_va
 from itero.plotting._matplotlib._colormap import apply_cmap
 
 
+@validate_params("alpha")
 def render_polygons(
     polygons: PolygonSequence,
     figure_size: tuple[float, float],
@@ -41,7 +41,12 @@ def render_polygons(
     """Render a PolygonSequence as an overlapping series of line plots.
 
     All inputs are validated before any Matplotlib figure is created, so a
-    bad color/cmap/alpha never leaves an orphaned figure behind.
+    bad color/cmap/alpha never leaves an orphaned figure behind. alpha is
+    validated by @validate_params above, before this body runs at all;
+    the rest are checked inline below since they don't fit that
+    decorator's model -- color/cmap validity is backend-specific, their
+    mutual exclusivity is a two-parameter constraint, and save_path is
+    optional in a way validate_save_path itself doesn't handle.
     save_path's directory is checked for existence up front to fail fast
     on the common case (typo'd path, wrong directory) without building
     anything. Write permission is deliberately not pre-checked —
@@ -95,7 +100,6 @@ def render_polygons(
         raise InvalidColorError(f"'{color}' is not a valid Matplotlib color.")
     if cmap is not None and not is_valid_matplotlib_cmap(cmap):
         raise InvalidColorMapError(f"'{cmap}' is not a valid Matplotlib colormap.")
-    validate_range(alpha, "alpha", InvalidAlphaError, ge=0.0, le=1.0)
     if save_path:
         validate_save_path(save_path)
 

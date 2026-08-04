@@ -23,12 +23,13 @@ import inspect
 from typing import Callable
 
 from itero.core._validate import validate_num_sides, validate_ratio
-from itero.plotting._validate import validate_figure_size
+from itero.plotting._validate import validate_alpha, validate_figure_size
 
 _VALIDATORS: dict[str, Callable[[object], None]] = {
     "num_sides": validate_num_sides,
     "ratio": validate_ratio,
     "figure_size": validate_figure_size,
+    "alpha": validate_alpha,
 }
 
 
