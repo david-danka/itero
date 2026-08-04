@@ -4,7 +4,7 @@ import pytest
 from matplotlib.figure import Figure as MatplotlibFigure
 
 from itero.api import plot_polygons
-from itero.exceptions import InvalidBackendError, InvalidFigureSizeError
+from itero.exceptions import InvalidBackendError, InvalidFigureSizeError, InvalidRatioError
 from itero.plotting import iterations_until_imperceptible
 from itero.plotting._matplotlib import eps_over_r as matplotlib_eps_over_r
 from itero.plotting._plotly import eps_over_r as plotly_eps_over_r
@@ -81,6 +81,20 @@ def test_zero_figure_size_raises_cleanly_with_auto_iterations(backend):
     with pytest.raises(InvalidFigureSizeError):
         plot_polygons(
             num_sides=5, ratio=0.2, iterations=None, figure_size=(0, 0),
+            show=False, backend=backend,
+        )
+
+
+@pytest.mark.parametrize("backend", ["matplotlib", "plotly"])
+@pytest.mark.parametrize("ratio", [0.0, 1.0])
+def test_boundary_ratio_raises_cleanly_with_auto_iterations(ratio, backend):
+    """Regression: with iterations=None, shrink_factor (via
+    iterations_until_imperceptible) ran before any ratio validation
+    existed, so ratio=0.0/1.0 crashed with a raw ZeroDivisionError
+    instead of the intended InvalidRatioError."""
+    with pytest.raises(InvalidRatioError):
+        plot_polygons(
+            num_sides=5, ratio=ratio, iterations=None, figure_size=(4, 4),
             show=False, backend=backend,
         )
 
