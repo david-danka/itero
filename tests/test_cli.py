@@ -126,6 +126,31 @@ def test_auto_iterations_over_max_errors(monkeypatch, capsys):
     assert "Auto-computed iterations" in capsys.readouterr().err
 
 
+@pytest.mark.parametrize("num_sides,ratio", [(0, 0.2), (1, 0.2), (2, 0.5)])
+def test_num_sides_below_minimum_errors_cleanly_with_auto_iterations(num_sides, ratio, monkeypatch, capsys):
+    """Regression: cli.py resolves the auto-computed iteration count
+    (via resolve_iterations) before ever calling plot_polygons/
+    Polygon.regular, which is the only thing that used to validate
+    num_sides on this path. num_sides=0/1, or 2 at ratio=0.5, crashed
+    with a raw, uncaught ZeroDivisionError or ValueError instead of the
+    clean InvalidNumSidesError num_sides=2 at the default ratio already
+    got (that one happened to reach Polygon.regular before any math
+    degenerated)."""
+    monkeypatch.setattr(
+        cli_module.sys, "argv",
+        [
+            "itero", "--num-sides", str(num_sides), "--ratio", str(ratio),
+            "--no-show", "--save-path", "x.png",
+        ],
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        cli()
+
+    assert exc_info.value.code == 1
+    assert "num_sides must be greater than or equal to 3" in capsys.readouterr().err
+
+
 def test_num_sides_at_max_is_allowed(monkeypatch):
     """MAX_SIDES itself must not be rejected -- only values strictly above
     it. --iterations is given explicitly here to isolate that from the

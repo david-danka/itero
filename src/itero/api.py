@@ -7,7 +7,7 @@ iterating it by linear interpolation, and rendering the resulting sequence.
 import importlib
 
 from itero.core import iterate_polygon, Polygon
-from itero.core._validate import validate_ratio
+from itero.core._validate import validate_num_sides, validate_ratio
 from itero.exceptions import InvalidBackendError
 from itero.plotting import iterations_until_imperceptible, validate_figure_size
 
@@ -63,12 +63,19 @@ def resolve_iterations(
 
     # Validated here, before eps_over_r/iterations_until_imperceptible run:
     # both call shrink_factor(num_sides, ratio) internally, before
-    # iterate_polygon's own validation of these same parameters ever gets
-    # a chance to run. A zero figure_size, or a ratio of exactly 0.0 or
-    # 1.0, would otherwise reach that pixel/log math first and crash with
-    # a raw ZeroDivisionError.
+    # iterate_polygon's own validation of these same parameters (or
+    # Polygon.regular's validation of num_sides) ever gets a chance to
+    # run. A zero figure_size, a ratio of exactly 0.0 or 1.0, or a
+    # num_sides below 3 would otherwise reach that pixel/log math first
+    # and crash with a raw ZeroDivisionError or ValueError -- num_sides
+    # is included even though plot_polygons happens to validate it via
+    # Polygon.regular before ever calling this function, because
+    # resolve_iterations is itself a direct, standalone entry point (see
+    # cli.py, which calls it before plot_polygons/Polygon.regular ever
+    # run) and can't rely on a caller having already done so.
     validate_figure_size(figure_size)
     validate_ratio(ratio)
+    validate_num_sides(num_sides)
 
     eps_over_r = renderer.eps_over_r(*figure_size, linewidth=1.5)
     return iterations_until_imperceptible(num_sides, ratio, eps_over_r)

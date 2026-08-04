@@ -8,6 +8,7 @@ from itero.exceptions import (
     InvalidBackendError,
     InvalidColorSpecError,
     InvalidFigureSizeError,
+    InvalidNumSidesError,
     InvalidRatioError,
 )
 from itero.plotting import iterations_until_imperceptible
@@ -80,6 +81,23 @@ def test_resolve_iterations_auto_computes_when_none(backend):
     expected = iterations_until_imperceptible(6, 0.15, expected_eps)
 
     assert resolve_iterations(6, 0.15, None, (5, 5), backend=backend) == expected
+
+
+@pytest.mark.parametrize("num_sides,ratio", [(0, 0.2), (1, 0.2), (2, 0.5), (-5, 0.2)])
+def test_resolve_iterations_rejects_invalid_num_sides_before_auto_compute(num_sides, ratio):
+    """Regression: resolve_iterations validated figure_size and ratio
+    before calling shrink_factor/iterations_until_imperceptible, but not
+    num_sides. Inside plot_polygons this was masked -- Polygon.regular
+    always validates num_sides before resolve_iterations is ever called
+    -- but resolve_iterations is itself a direct entry point (cli.py
+    calls it before plot_polygons/Polygon.regular ever run), and calling
+    it with num_sides=0/1 crashed with a raw ZeroDivisionError
+    (2*pi/0, or log(s) with s==1 exactly); num_sides=2 at ratio=0.5
+    crashed with ValueError: math domain error (log(0), s==0 exactly).
+    None of these are PolygonIterError subclasses, so they weren't even
+    catchable by cli.py's own error handling."""
+    with pytest.raises(InvalidNumSidesError):
+        resolve_iterations(num_sides, ratio, None, (4, 4), backend="matplotlib")
 
 
 @pytest.mark.parametrize("backend", ["matplotlib", "plotly"])
