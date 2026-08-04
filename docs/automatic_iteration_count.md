@@ -93,31 +93,39 @@ is wider than the shape it traces, and further iterations are invisible.
 $$w_{px} = w_{in} \cdot \text{dpi}, \qquad h_{px} = h_{in} \cdot \text{dpi}$$
 
 ```python
-dpi    = fig.dpi
-width  = fig.get_figwidth()  * dpi
-height = fig.get_figheight() * dpi
+width  = figure_width  * dpi
+height = figure_height * dpi
 ```
 
-`fig.dpi` is a software quantity — pixels allocated per inch in the rendered buffer.
+`dpi` is a software quantity — pixels allocated per inch in the rendered buffer.
 It has nothing to do with the physical PPI of the display. We are reasoning about
-the rendered pixel buffer, not the physical screen.
+the rendered pixel buffer, not the physical screen. `figure_width`/`figure_height`
+are plain numbers here, not a constructed Figure — nothing below needs a live
+Matplotlib object.
 
 ### Step 2 — axes area in pixels
 
 $$w_{ax} = w_{px} \cdot b_w, \qquad h_{ax} = h_{px} \cdot b_h$$
 
-where $b_w,\, b_h$ are the axes width and height fractions from the bounding box.
+where $b_w,\, b_h$ are the axes width and height fractions from Matplotlib's
+default subplot layout.
 
 ```python
-bbox        = ax.get_position()
-axes_width  = width  * bbox.width
-axes_height = height * bbox.height
+axes_width_fraction = (
+    plt.rcParams["figure.subplot.right"] - plt.rcParams["figure.subplot.left"]
+)
+axes_height_fraction = (
+    plt.rcParams["figure.subplot.top"] - plt.rcParams["figure.subplot.bottom"]
+)
+axes_width  = width  * axes_width_fraction
+axes_height = height * axes_height_fraction
 ```
 
-`ax.get_position()` returns the axes bounding box in figure-fraction coordinates.
-This is fixed by the layout engine the moment `plt.subplots()` is called — it does
-not depend on any plotted data. So this entire derivation can be evaluated
-**before a single polygon is drawn**.
+Reading `plt.rcParams` directly (instead of a constructed Axes' `get_position()`)
+gives the same fractions `plt.subplots()` would produce with no custom layout
+adjustments — which is all `render_polygons` ever does — but without needing a
+Figure/Axes to exist yet. So this entire derivation can be evaluated **before
+any figure is created at all**, not merely before a polygon is drawn.
 
 ### Step 3 — line width in pixels
 
@@ -172,6 +180,14 @@ eps_over_R = (lw_pixels / 2) * (2.0 / min(axes_width, axes_height))
 
 ### Step 8 — solving for $k$
 
+Everything up to here (Steps 1–7) is Matplotlib-specific — it's the only part
+that needs to know about figure size, DPI, or line width in points. This step
+isn't: given $\varepsilon/R$ from *any* source, the iteration count follows
+from `shrink_factor` alone. That's why it lives as its own backend-agnostic
+function rather than being fused into the pixel-geometry code above — a
+different rendering backend only needs to supply its own $\varepsilon/R$ and
+can reuse this step unchanged.
+
 We want the smallest $k$ such that $s^k \leq \varepsilon/R$:
 
 $$s^k \leq \frac{\varepsilon}{R}$$
@@ -196,27 +212,36 @@ return math.ceil(math.log(eps_over_R) / math.log(s))
 
 ### Full implementation
 
+Split across two functions, matching the Matplotlib-specific/backend-agnostic
+boundary from Step 8: `matplotlib_eps_over_r` (`itero.plotting._matplotlib`)
+does Steps 1–7, `iterations_until_imperceptible` (`itero.plotting`, no
+Matplotlib import at all) does Step 8.
+
 ```python
-def required_iterations(n: int, t: float, fig, ax, linewidth: float = 1.5) -> int:
-    # Figure size in pixels
-    dpi    = fig.dpi
-    width  = fig.get_figwidth()  * dpi
-    height = fig.get_figheight() * dpi
+def matplotlib_eps_over_r(
+    figure_width: float, figure_height: float,
+    dpi: float = 100.0, linewidth: float = 1.5,
+) -> float:
+    width  = figure_width  * dpi
+    height = figure_height * dpi
 
-    # Axes area in pixels
-    bbox        = ax.get_position()
-    axes_width  = width  * bbox.width
-    axes_height = height * bbox.height
+    axes_width_fraction = (
+        plt.rcParams["figure.subplot.right"] - plt.rcParams["figure.subplot.left"]
+    )
+    axes_height_fraction = (
+        plt.rcParams["figure.subplot.top"] - plt.rcParams["figure.subplot.bottom"]
+    )
+    axes_width  = width  * axes_width_fraction
+    axes_height = height * axes_height_fraction
 
-    # Line width in pixels (points → inches → pixels)
-    lw_pixels = (linewidth * dpi) / 72
+    lw_pixels  = (linewidth * dpi) / 72
+    eps_pixels = lw_pixels / 2
+    return eps_pixels * 2 / min(axes_width, axes_height)
 
-    # ε/R: half line width threshold, R cancels
-    eps_over_R = (lw_pixels / 2) * (2.0 / min(axes_width, axes_height))
 
-    # Iteration count
+def iterations_until_imperceptible(n: int, t: float, eps_over_r: float) -> int:
     s = shrink_factor(n, t)
-    return math.ceil(math.log(eps_over_R) / math.log(s))
+    return math.ceil(math.log(eps_over_r) / math.log(s))
 ```
 
 ---
@@ -224,13 +249,15 @@ def required_iterations(n: int, t: float, fig, ax, linewidth: float = 1.5) -> in
 ## Putting it all together
 
 ```python
-fig, ax = build_figure(figure_size)
+eps_over_r = matplotlib_eps_over_r(*figure_size, linewidth=1.5)
+k          = iterations_until_imperceptible(n=5, t=0.2, eps_over_r=eps_over_r)
+sequence   = iterate_polygon(Polygon.regular(5), t=0.2, iterations=k)
 
-k        = required_iterations(n=5, t=0.2, fig=fig, ax=ax, linewidth=1.5)
-sequence = iterate_polygon(Polygon.regular(5), t=0.2, iterations=k)
-
-draw_polygons(sequence, fig=fig, ax=ax, ...)
+fig = render_polygons(sequence, figure_size, ...)
 ```
 
-The figure is created once. The iteration count is derived analytically from its
-geometry. No test renders, no magic constants, no guessing.
+The iteration count is derived analytically from plain figure parameters —
+no figure needs to exist yet to compute it. `render_polygons` only builds and
+populates a figure once `k` (and every other input) is already known-good, in
+a single step. No test renders, no magic constants, no guessing, and no
+orphaned figure if something upstream turns out to be invalid.

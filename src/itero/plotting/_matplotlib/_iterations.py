@@ -16,7 +16,7 @@ def matplotlib_eps_over_r(
     parameters rather than a constructed Figure/Axes — so it can be
     computed before any plot exists. The axes' fraction of the figure is
     read live from Matplotlib's current subplot rcParams, matching the
-    default layout build_figure produces.
+    default layout render_polygons produces.
 
     Args:
         figure_width: Figure width in inches.

@@ -14,7 +14,8 @@ def iterations_until_imperceptible(n: int, t: float, eps_over_r: float) -> int:
     size expressed as a fraction of the polygon's own radius; how that
     fraction is derived (figure size, DPI, line width, ...) is entirely
     up to the caller. See itero.plotting._matplotlib.matplotlib_eps_over_r
-    for a Matplotlib-specific way to compute it.
+    or itero.plotting._plotly.plotly_eps_over_r for backend-specific ways
+    to compute it.
 
     Args:
         n: Number of sides of the initial regular polygon.
