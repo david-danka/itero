@@ -112,6 +112,30 @@ def test_boundary_ratio_raises_cleanly_with_auto_iterations(ratio, backend):
         )
 
 
+def test_tiny_figure_size_does_not_crash_with_auto_iterations():
+    """Regression: a figure_size small enough relative to the fixed
+    linewidth makes eps_over_r >= 1, so iterations_until_imperceptible's
+    log(eps_over_r)/log(s) went negative -- e.g. -2. That flowed into
+    iterate_polygon and raised InvalidIterationsError blaming the caller
+    for a value they never supplied (iterations=None was requested).
+    The shape is simply already imperceptible before any iteration; this
+    should render just the original polygon, not raise.
+
+    Matplotlib only: at dpi=100, Plotly's own figure width (in pixels)
+    must be >= 10, i.e. figure_size >= 0.1in -- comfortably above the
+    figure_size where eps_over_r ever reaches 1 (~0.02-0.03in). Plotly's
+    render_polygons therefore always hits its own raw, unwrapped
+    ValueError for a too-small figure_size before this bug is ever
+    reachable through it; that's a separate, pre-existing gap."""
+    fig = plot_polygons(
+        num_sides=5, ratio=0.2, iterations=None, figure_size=(0.02, 0.02),
+        show=False, backend="matplotlib",
+    )
+
+    assert len(fig.axes[0].collections[0].get_paths()) == 1
+    plt.close(fig)
+
+
 @pytest.mark.parametrize("backend", ["matplotlib", "plotly"])
 def test_iterations_zero_does_not_crash(backend):
     """Regression: apply_cmap used to divide by zero for a single polygon."""

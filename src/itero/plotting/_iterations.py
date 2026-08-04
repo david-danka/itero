@@ -25,8 +25,13 @@ def iterations_until_imperceptible(n: int, t: float, eps_over_r: float) -> int:
 
     Returns:
         Number of iterations to draw before the polygon becomes smaller
-        than the given visibility threshold.
+        than the given visibility threshold. Floored at 0 -- if
+        eps_over_r is already >= 1 (the threshold is at least as large as
+        the polygon itself, e.g. a very small figure_size relative to
+        the stroke width), the shape is already imperceptible before any
+        iteration runs, and log(eps_over_r)/log(s) would otherwise go
+        negative.
     """
 
     s = shrink_factor(n, t)
-    return math.ceil(math.log(eps_over_r) / math.log(s))
+    return max(0, math.ceil(math.log(eps_over_r) / math.log(s)))

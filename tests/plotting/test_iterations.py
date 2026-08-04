@@ -32,3 +32,16 @@ def test_result_is_non_negative_for_sub_unit_threshold(n, t):
     result = iterations_until_imperceptible(n, t, eps_over_r=0.5)
 
     assert result >= 0
+
+
+@given(num_sides_st, ratio_st)
+def test_result_is_floored_at_zero_for_super_unit_threshold(n, t):
+    """Regression: eps_over_r >= 1 means the threshold is already at
+    least as large as the shape itself, so log(eps_over_r)/log(s) is
+    always negative (log(eps_over_r) > 0, log(s) < 0) -- but there's no
+    such thing as a negative iteration count. The shape is already
+    imperceptible before any iteration runs, so this must floor at 0
+    rather than propagate the raw negative ceil() result."""
+    result = iterations_until_imperceptible(n, t, eps_over_r=2.0)
+
+    assert result == 0
