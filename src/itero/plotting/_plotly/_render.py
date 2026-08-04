@@ -121,7 +121,7 @@ def render_polygons(
     if save_path:
         try:
             fig.write_image(save_path)
-        except ValueError as e:
+        except (OSError, ValueError) as e:
             raise RenderingError(f"Could not save figure to '{save_path}': {e}") from e
     if show:
         fig.show()
