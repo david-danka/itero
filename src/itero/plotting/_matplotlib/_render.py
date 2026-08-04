@@ -23,19 +23,9 @@ from itero.plotting._matplotlib._validate import is_valid_matplotlib_cmap, is_va
 from itero.plotting._matplotlib._colormap import apply_cmap
 
 
-def build_figure(figure_size: tuple[float, float]) -> Figure:
-    """Create and return an empty figure, ready for plotting."""
-    if figure_size[0] < 0 or figure_size[1] < 0:
-        raise InvalidFigureSizeError(f"Figure width and height must be positive, got {figure_size}.")
-
-    fig, ax = plt.subplots(figsize=figure_size)
-    ax.set_aspect("equal")
-    ax.axis("off")
-    return fig
-
-
-def draw_polygons(
-    polygons: PolygonSequence, fig: Figure,
+def render_polygons(
+    polygons: PolygonSequence,
+    figure_size: tuple[float, float],
     cmap: str | None = None,
     color: str | None = None,
     alpha: float = 1.0,
@@ -44,16 +34,17 @@ def draw_polygons(
 ) -> Figure:
     """Render a PolygonSequence as an overlapping series of line plots.
 
-    Each polygon is drawn as a single continuous line using its x and y
-    coordinate lists. Axes are hidden and aspect ratio is locked to equal
-    so the shapes are not distorted. The figure is never closed here —
-    it's returned live so the caller can embed it (e.g. st.pyplot), save
-    it, or close it themselves once done.
+    All inputs are validated before any Matplotlib figure is created, so a
+    bad color/cmap/alpha never leaves an orphaned figure behind. Each
+    polygon is drawn as a single continuous line; axes are hidden and
+    aspect ratio is locked to equal so the shapes are not distorted. The
+    figure is never closed here — it's returned live so the caller can
+    embed it (e.g. st.pyplot), save it, or close it themselves once done.
 
     Args:
         polygons: The sequence of polygons to render. Typically the output
             of iterate_polygon.
-        fig: Matplotlib Figure produced by build_figure.
+        figure_size: Figure dimensions in inches as (width, height).
         cmap: Optional Matplotlib colormap name for gradient colouring.
         color: Line colour for all polygons. Accepts any value supported
             by Matplotlib (named colours, hex strings, RGB tuples, etc.).
@@ -72,10 +63,11 @@ def draw_polygons(
     Example:
         >>> polygon = Polygon.regular(6)
         >>> sequence = iterate_polygon(polygon, t=0.1, iterations=200)
-        >>> fig = build_figure((8, 8))
-        >>> draw_polygons(sequence, fig, color='indigo', alpha=0.15)
+        >>> render_polygons(sequence, (8, 8), color='indigo', alpha=0.15)
     """
 
+    if figure_size[0] < 0 or figure_size[1] < 0:
+        raise InvalidFigureSizeError(f"Figure width and height must be positive, got {figure_size}.")
     if color is not None and not is_valid_matplotlib_color(color):
         raise InvalidColorError(f"'{color}' is not a valid Matplotlib color.")
     if cmap is not None and not is_valid_matplotlib_cmap(cmap):
@@ -83,7 +75,9 @@ def draw_polygons(
     if not (0.0 <= alpha <= 1.0):
         raise InvalidAlphaError(f"Alpha must be between 0.0 and 1.0, got {alpha}.")
 
-    ax = fig.axes[0]
+    fig, ax = plt.subplots(figsize=figure_size)
+    ax.set_aspect("equal")
+    ax.axis("off")
     fig.canvas.manager.set_window_title("Polygon sequence plot")
 
     if cmap is None and color is None:

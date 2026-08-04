@@ -10,9 +10,10 @@ from itero.core import iterate_polygon, Polygon
 from itero.exceptions import InvalidBackendError
 from itero.plotting import iterations_until_imperceptible
 
-# Each entry must be an importable module exposing build_figure(figure_size),
-# draw_polygons(polygons, fig, ...) -> figure, and eps_over_r(width, height,
-# ...) -> float. See itero.plotting._matplotlib / itero.plotting._plotly.
+# Each entry must be an importable module exposing
+# render_polygons(polygons, figure_size, ...) -> figure and
+# eps_over_r(width, height, ...) -> float. See itero.plotting._matplotlib
+# / itero.plotting._plotly.
 _BACKEND_MODULES = {
     "matplotlib": "itero.plotting._matplotlib",
     "plotly": "itero.plotting._plotly",
@@ -77,11 +78,9 @@ def plot_polygons(
         iterations=iterations,
     )
 
-    fig = renderer.build_figure(figure_size)
-
-    return renderer.draw_polygons(
+    return renderer.render_polygons(
         polygons,
-        fig=fig,
+        figure_size,
         cmap=cmap,
         color=color,
         alpha=alpha,

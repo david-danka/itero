@@ -9,7 +9,7 @@ from itero.exceptions import (
     InvalidFigureSizeError,
     RenderingError,
 )
-from itero.plotting._plotly._render import build_figure, draw_polygons
+from itero.plotting._plotly._render import render_polygons
 
 
 def _sequence(num_sides=5, ratio=0.2, iterations=10):
@@ -17,98 +17,77 @@ def _sequence(num_sides=5, ratio=0.2, iterations=10):
     return iterate_polygon(polygon, t=ratio, iterations=iterations)
 
 
-def test_build_figure_returns_a_figure_with_requested_size():
-    fig = build_figure((4, 4), dpi=100.0)
+@pytest.mark.parametrize("figure_size", [(-1, 4), (4, -1)])
+def test_rejects_negative_figure_size(figure_size):
+    with pytest.raises(InvalidFigureSizeError):
+        render_polygons(_sequence(), figure_size, show=False)
+
+
+def test_returns_a_figure_with_requested_size():
+    fig = render_polygons(_sequence(), (4, 4), dpi=100.0, show=False)
 
     assert isinstance(fig, go.Figure)
     assert fig.layout.width == 400
     assert fig.layout.height == 400
 
 
-@pytest.mark.parametrize("figure_size", [(-1, 4), (4, -1)])
-def test_build_figure_rejects_negative_size(figure_size):
-    with pytest.raises(InvalidFigureSizeError):
-        build_figure(figure_size)
-
-
-def test_draw_polygons_returns_the_figure():
-    fig = build_figure((4, 4))
-
-    result = draw_polygons(_sequence(), fig, show=False)
-
-    assert result is fig
-
-
-def test_draw_polygons_default_colorscale_produces_one_trace_per_polygon():
-    fig = build_figure((4, 4))
+def test_default_colorscale_produces_one_trace_per_polygon():
     seq = _sequence(iterations=10)
 
-    draw_polygons(seq, fig, show=False)
+    fig = render_polygons(seq, (4, 4), show=False)
 
     assert len(fig.data) == len(seq)
 
 
-def test_draw_polygons_fixed_color_produces_one_trace_per_polygon():
-    fig = build_figure((4, 4))
+def test_fixed_color_produces_one_trace_per_polygon():
     seq = _sequence(iterations=6)
 
-    draw_polygons(seq, fig, color="indigo", show=False)
+    fig = render_polygons(seq, (4, 4), color="indigo", show=False)
 
     assert len(fig.data) == len(seq)
     assert all(trace.line.color == "indigo" for trace in fig.data)
 
 
-def test_draw_polygons_sets_explicit_axis_range():
+def test_sets_explicit_axis_range():
     """Regression: relying on browser autorange with hidden+scaleanchor
     axes silently produced a blank plot; range must be set explicitly."""
-    fig = build_figure((4, 4))
-
-    draw_polygons(_sequence(), fig, show=False)
+    fig = render_polygons(_sequence(), (4, 4), show=False)
 
     assert fig.layout.xaxis.range is not None
     assert fig.layout.yaxis.range is not None
 
 
-def test_draw_polygons_rejects_invalid_color():
-    fig = build_figure((4, 4))
-
+def test_rejects_invalid_color():
     with pytest.raises(InvalidColorError):
-        draw_polygons(_sequence(), fig, color="", show=False)
+        render_polygons(_sequence(), (4, 4), color="", show=False)
 
 
-def test_draw_polygons_rejects_invalid_cmap():
-    fig = build_figure((4, 4))
-
+def test_rejects_invalid_cmap():
     with pytest.raises(InvalidColorMapError):
-        draw_polygons(_sequence(), fig, cmap="not-a-real-colorscale", show=False)
+        render_polygons(_sequence(), (4, 4), cmap="not-a-real-colorscale", show=False)
 
 
 @pytest.mark.parametrize("alpha", [-0.1, 1.1])
-def test_draw_polygons_rejects_invalid_alpha(alpha):
-    fig = build_figure((4, 4))
-
+def test_rejects_invalid_alpha(alpha):
     with pytest.raises(InvalidAlphaError):
-        draw_polygons(_sequence(), fig, alpha=alpha, show=False)
+        render_polygons(_sequence(), (4, 4), alpha=alpha, show=False)
 
 
-def test_draw_polygons_saves_to_disk(tmp_path):
+def test_saves_to_disk(tmp_path):
     pytest.importorskip("kaleido")
-    fig = build_figure((4, 4))
     out = tmp_path / "polygon.png"
 
-    draw_polygons(_sequence(), fig, show=False, save_path=str(out))
+    render_polygons(_sequence(), (4, 4), show=False, save_path=str(out))
 
     assert out.exists()
     assert out.stat().st_size > 0
 
 
-def test_draw_polygons_wraps_save_failure_without_kaleido(monkeypatch):
-    fig = build_figure((4, 4))
-
+def test_wraps_save_failure_without_kaleido(monkeypatch):
     def _raise(*args, **kwargs):
         raise ValueError("kaleido not installed (simulated)")
 
-    monkeypatch.setattr(fig, "write_image", _raise)
+    monkeypatch.setattr(go.Figure, "write_image", _raise)
 
     with pytest.raises(RenderingError):
-        draw_polygons(_sequence(), fig, show=False, save_path="polygon.png")
+        render_polygons(_sequence(), (4, 4), show=False, save_path="polygon.png")

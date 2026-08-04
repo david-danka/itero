@@ -1,8 +1,8 @@
 """
 Visualisation utilities for polygon sequences, rendered with Plotly.
 
-Mirrors the Matplotlib backend's build_figure/draw_polygons contract, so
-api.py can dispatch to either backend uniformly.
+Mirrors the Matplotlib backend's render_polygons contract, so api.py can
+dispatch to either backend uniformly.
 """
 
 import plotly.graph_objects as go
@@ -20,45 +20,29 @@ from itero.plotting._plotly._validate import is_valid_plotly_cmap, is_valid_plot
 from itero.plotting._plotly._colormap import apply_cmap
 
 
-def build_figure(figure_size: tuple[float, float], dpi: float = 100.0) -> go.Figure:
-    """Create and return an empty Plotly figure, ready for plotting.
-
-    Margins are zeroed and axes hidden so the whole figure is the drawing
-    area, matching plotly_eps_over_r's assumption.
-    """
-    if figure_size[0] < 0 or figure_size[1] < 0:
-        raise InvalidFigureSizeError(f"Figure width and height must be positive, got {figure_size}.")
-
-    fig = go.Figure()
-    fig.update_layout(
-        width=figure_size[0] * dpi,
-        height=figure_size[1] * dpi,
-        xaxis=dict(visible=False, scaleanchor="y", scaleratio=1),
-        yaxis=dict(visible=False),
-        margin=dict(l=0, r=0, t=0, b=0),
-        showlegend=False,
-    )
-    return fig
-
-
-def draw_polygons(
-    polygons: PolygonSequence, fig: go.Figure,
+def render_polygons(
+    polygons: PolygonSequence,
+    figure_size: tuple[float, float],
     cmap: str | None = None,
     color: str | None = None,
     alpha: float = 1.0,
     show: bool = True,
     save_path: str | None = None,
+    dpi: float = 100.0,
 ) -> go.Figure:
     """Render a PolygonSequence as an overlapping series of Plotly line traces.
 
-    Each polygon is drawn as a single continuous line trace. The figure is
-    returned live regardless of show/save_path, so the caller can embed
-    it directly (e.g. st.plotly_chart in a Streamlit app).
+    All inputs are validated before any Plotly figure is created. Each
+    polygon is drawn as a single continuous line trace. Margins are
+    zeroed and axes hidden so the whole figure is the drawing area,
+    matching plotly_eps_over_r's assumption. The figure is returned live
+    regardless of show/save_path, so the caller can embed it directly
+    (e.g. st.plotly_chart in a Streamlit app).
 
     Args:
         polygons: The sequence of polygons to render. Typically the output
             of iterate_polygon.
-        fig: Plotly Figure produced by build_figure.
+        figure_size: Figure dimensions in inches as (width, height).
         cmap: Optional Plotly colorscale name for gradient colouring.
         color: Line colour for all polygons. Accepts any value supported
             by Plotly (named colours, hex strings, rgb()/rgba(), etc.).
@@ -71,17 +55,30 @@ def draw_polygons(
         save_path: File path to save the figure as a static image.
             Requires the optional kaleido package. If None, the figure
             is not saved. Defaults to None.
+        dpi: Dots per inch used to convert figure_size to pixels.
 
     Returns:
         The populated Plotly Figure.
     """
 
+    if figure_size[0] < 0 or figure_size[1] < 0:
+        raise InvalidFigureSizeError(f"Figure width and height must be positive, got {figure_size}.")
     if color is not None and not is_valid_plotly_color(color):
         raise InvalidColorError(f"'{color}' is not a valid Plotly color.")
     if cmap is not None and not is_valid_plotly_cmap(cmap):
         raise InvalidColorMapError(f"'{cmap}' is not a valid Plotly colorscale.")
     if not (0.0 <= alpha <= 1.0):
         raise InvalidAlphaError(f"Alpha must be between 0.0 and 1.0, got {alpha}.")
+
+    fig = go.Figure()
+    fig.update_layout(
+        width=figure_size[0] * dpi,
+        height=figure_size[1] * dpi,
+        xaxis=dict(visible=False, scaleanchor="y", scaleratio=1),
+        yaxis=dict(visible=False),
+        margin=dict(l=0, r=0, t=0, b=0),
+        showlegend=False,
+    )
 
     if cmap is None and color is None:
         cmap = "viridis"

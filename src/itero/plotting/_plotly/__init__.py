@@ -1,6 +1,6 @@
 """Plotly rendering backend."""
 
-from itero.plotting._plotly._render import build_figure, draw_polygons
+from itero.plotting._plotly._render import render_polygons
 from itero.plotting._plotly._iterations import plotly_eps_over_r
 
 # Generic alias so api.py can dispatch across backends uniformly, without
@@ -8,8 +8,7 @@ from itero.plotting._plotly._iterations import plotly_eps_over_r
 eps_over_r = plotly_eps_over_r
 
 __all__ = [
-    "build_figure",
-    "draw_polygons",
+    "render_polygons",
     "plotly_eps_over_r",
     "eps_over_r",
 ]
