@@ -42,7 +42,7 @@ def test_rejects_a_memory_prohibitive_request(monkeypatch):
     from itero.exceptions import ExcessiveMemoryUsageError
 
     monkeypatch.setattr(
-        "itero.core._validate.available_memory_bytes", lambda: 1 * 1024**3
+        "itero.core._safety.available_memory_bytes", lambda: 1 * 1024**3
     )
     polygon = Polygon.regular(1000)
 

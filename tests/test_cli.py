@@ -88,7 +88,7 @@ def test_num_sides_and_iterations_have_no_upper_bound_at_the_parser_level():
     is the caller's call to make; CLIProgressReporter gives visibility
     into a slow run instead of silently blocking or refusing outright,
     and iterate_polygon's own memory-derived budget (see
-    core._validate.validate_vertex_budget) is the only remaining
+    core._safety.validate_vertex_budget) is the only remaining
     backstop, for the genuinely-different reason that a request which
     would exhaust memory outright can't be helped by patience alone."""
     args = build_parser().parse_args(["--num-sides", "50000", "--iterations", "50000"])

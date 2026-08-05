@@ -4,7 +4,7 @@ from hypothesis import given
 import pytest
 
 from itero.core._primitives import Point, Polygon
-from itero.exceptions import InvalidNumSidesError, DegeneratePolygonError
+from itero.exceptions import ExcessiveMemoryUsageError, InvalidNumSidesError, DegeneratePolygonError
 from tests.helpers import float_tol, translate_polygon, reverse_polygon, scale_polygon
 from tests.strategies import (
     num_sides_st,
@@ -203,6 +203,17 @@ class TestRegularPolygon:
     def test_regular_polygon_invalid_num_sides(self, num_sides):
         with pytest.raises(InvalidNumSidesError):
             Polygon.regular(num_sides=num_sides)
+
+    def test_regular_polygon_rejects_memory_prohibitive_num_sides(self, monkeypatch):
+        """Regression: num_sides alone (independent of any iterations --
+        Polygon.regular builds just one polygon) can exhaust memory on
+        its own; validate_vertex_budget is called explicitly here, not
+        bundled inside validate_num_sides (see core._safety)."""
+        monkeypatch.setattr(
+            "itero.core._safety.available_memory_bytes", lambda: 1 * 1024**3
+        )
+        with pytest.raises(ExcessiveMemoryUsageError):
+            Polygon.regular(num_sides=100_000_000)
 
 class TestPolygonProtocols:
 

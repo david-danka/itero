@@ -10,6 +10,7 @@ from dataclasses import dataclass
 import math
 import sys
 
+from itero.core._safety import validate_vertex_budget
 from itero.core._validate import validate_num_sides
 from itero.exceptions import DegeneratePolygonError, InvalidNumSidesError
 
@@ -192,6 +193,12 @@ class Polygon:
             >>> hexagon = Polygon.regular(6, radius=2.0, center=Point(1.0, 1.0))
         """
         validate_num_sides(num_sides)
+        # Explicit and separate from validate_num_sides above on purpose
+        # -- this is a resource-safety check (is it safe to build this
+        # many Point objects right now), not a correctness check of
+        # num_sides' own shape. See core._safety for why the two are
+        # kept apart.
+        validate_vertex_budget(num_sides)
 
         center = center or Point(0.0, 0.0)
         central_angle = 2 * math.pi / num_sides

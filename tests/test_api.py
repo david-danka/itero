@@ -112,6 +112,20 @@ def test_resolve_iterations_rejects_invalid_num_sides_even_with_explicit_iterati
         resolve_iterations(0, 0.2, 5, (4, 4), backend="matplotlib")
 
 
+def test_resolve_iterations_has_no_memory_check_of_its_own():
+    """resolve_iterations never allocates anything proportional to
+    num_sides -- it only ever computes an iteration count (O(1) math via
+    shrink_factor/iterations_until_imperceptible). A large num_sides
+    here is not a memory hazard the way it is for Polygon.regular
+    (which actually builds num_sides Point objects) or iterate_polygon
+    (which builds num_sides * iterations of them) -- both of which do
+    carry an explicit validate_vertex_budget check. This should return
+    a (very large) plain int, not raise ExcessiveMemoryUsageError."""
+    result = resolve_iterations(50_000_000, 0.2, None, (4, 4), backend="matplotlib")
+    assert isinstance(result, int)
+    assert result > 0
+
+
 @pytest.mark.parametrize("backend", ["matplotlib", "plotly"])
 def test_auto_iterations_matches_manual_calculation(backend):
     num_sides, ratio, figure_size = 6, 0.15, (5, 5)

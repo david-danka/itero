@@ -15,7 +15,8 @@ import math
 
 from itero._progress import NullProgressReporter
 from itero.core._primitives import Point, Polygon, PolygonSequence
-from itero.core._validate import validate_iterations, validate_ratio, validate_vertex_budget
+from itero.core._safety import validate_vertex_budget
+from itero.core._validate import validate_iterations, validate_ratio
 
 
 def _transform_polygon(polygon: Polygon, t: float) -> Polygon:
