@@ -18,6 +18,26 @@ class _FakeStream(io.StringIO):
         return self._is_tty
 
 
+class _CountingStream(io.StringIO):
+    """A StringIO that tracks how many times isatty() gets called."""
+
+    def __init__(self):
+        super().__init__()
+        self.isatty_calls = 0
+
+    def isatty(self) -> bool:
+        self.isatty_calls += 1
+        return True
+
+
+class _BrokenIsattyStream(io.StringIO):
+    """A stream whose isatty() raises, simulating an already-closed or
+    otherwise unusable stream that still exists."""
+
+    def isatty(self):
+        raise ValueError("I/O operation on closed file")
+
+
 class TestNullProgressReporter:
     def test_iteration_step_is_a_silent_no_op(self):
         NullProgressReporter().iteration_step(1, 100)  # should not raise, no output
@@ -146,3 +166,44 @@ class TestCLIProgressReporterPhase:
         output = stream.getvalue()
         assert "Saving..." in output
         assert "\r" not in output
+
+
+class TestCLIProgressReporterRobustness:
+    """Progress reporting is best-effort: it must never be the reason a
+    render fails, no matter what state the output stream is in."""
+
+    def test_isatty_is_queried_once_not_per_step(self):
+        """Regression: isatty() is a real syscall (~250ns measured); a
+        large iteration count with a cheap per-iteration cost (small
+        num_sides) used to pay that cost on every single step() call
+        once the bar became visible, for an answer that can't change
+        mid-run."""
+        stream = _CountingStream()
+        reporter = CLIProgressReporter(stream=stream, delay=0.0)
+
+        for i in range(1, 100_001):
+            reporter.iteration_step(i, 100_000)
+
+        assert stream.isatty_calls == 1
+
+    def test_none_stream_does_not_crash(self):
+        """Regression: sys.stderr can legitimately be None (e.g. a
+        windowed/noconsole-packaged app on Windows). CLIProgressReporter()
+        (no explicit stream) resolves to sys.stderr internally -- if that's
+        None, every call used to raise AttributeError the moment the delay
+        elapsed, taking the whole render down with it."""
+        reporter = CLIProgressReporter(stream=None, delay=0.0)
+
+        reporter.iteration_step(1, 10)  # should not raise
+        reporter.render_step(1, 10)  # should not raise
+        with reporter.phase("Saving..."):  # should not raise
+            pass
+
+    def test_broken_isatty_degrades_to_non_interactive_rather_than_raising(self):
+        stream = _BrokenIsattyStream()
+
+        reporter = CLIProgressReporter(stream=stream, delay=0.0)
+        reporter.iteration_step(1, 10)  # should not raise
+
+        assert "\r" not in stream.getvalue()
+        assert "Iterating" in stream.getvalue()

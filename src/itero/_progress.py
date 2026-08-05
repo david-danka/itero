@@ -19,6 +19,12 @@ Two kinds of "slow" get two different treatments, deliberately:
 Both stay silent for the first second: most renders never take that
 long, and flashing a bar/spinner for a fraction of a second is worse
 than saying nothing at all.
+
+Progress reporting is inherently best-effort: it must never be the
+reason a render fails. sys.stderr can legitimately be None (e.g. a
+windowed/noconsole-packaged app on Windows), so CLIProgressReporter
+detects an unusable stream at construction and quietly disables
+itself rather than raising the first time it tries to use it.
 """
 
 import sys
@@ -50,11 +56,19 @@ class _DelayedBar:
     separately for interactive terminals (smooth, frequent) and
     non-interactive output (occasional plain lines, since \\r tricks
     just garble a piped/redirected/logged stream).
+
+    is_tty is resolved once by the caller and passed in, rather than
+    queried here on every step() call -- isatty() is a real syscall
+    (~250ns measured), and step() runs once per iteration; for a large
+    iteration count with a cheap per-iteration cost (small num_sides),
+    querying it every time is measurable, avoidable overhead for an
+    answer that can't change mid-run.
     """
 
-    def __init__(self, label: str, stream, delay: float = 1.0, width: int = 30):
+    def __init__(self, label: str, stream, is_tty: bool, delay: float = 1.0, width: int = 30):
         self._label = label
         self._stream = stream
+        self._is_tty = is_tty
         self._delay = delay
         self._width = width
         self._start: float | None = None
@@ -76,22 +90,21 @@ class _DelayedBar:
                 return
             self._shown = True
 
-        is_tty = self._stream.isatty()
-        min_interval = 0.1 if is_tty else 1.0
+        min_interval = 0.1 if self._is_tty else 1.0
         finished = current >= total
         if not finished and now - self._last_draw < min_interval:
             return
         self._last_draw = now
-        self._draw(current, total, elapsed, is_tty)
-        if finished and is_tty:
+        self._draw(current, total, elapsed)
+        if finished and self._is_tty:
             print(file=self._stream)  # leave the completed bar in place
 
-    def _draw(self, current: int, total: int, elapsed: float, is_tty: bool) -> None:
+    def _draw(self, current: int, total: int, elapsed: float) -> None:
         frac = current / total if total else 1.0
         rate = current / elapsed if elapsed > 0 else 0.0
         eta = (total - current) / rate if rate > 0 else 0.0
 
-        if is_tty:
+        if self._is_tty:
             filled = int(self._width * frac)
             bar = "#" * filled + "-" * (self._width - filled)
             print(
@@ -114,18 +127,42 @@ class CLIProgressReporter:
 
     def __init__(self, stream=None, delay: float = 1.0):
         self._stream = stream if stream is not None else sys.stderr
+        # sys.stderr can be None (e.g. a windowed/noconsole-packaged
+        # app on Windows) -- disable quietly rather than crash the
+        # render this is only meant to report on, not gate.
+        self._enabled = self._stream is not None
         self._delay = delay
-        self._iteration_bar = _DelayedBar("Iterating", self._stream, delay)
-        self._render_bar = _DelayedBar("Rendering", self._stream, delay)
+        self._is_tty = self._safe_isatty()
+        self._iteration_bar = _DelayedBar("Iterating", self._stream, self._is_tty, delay)
+        self._render_bar = _DelayedBar("Rendering", self._stream, self._is_tty, delay)
+
+    def _safe_isatty(self) -> bool:
+        if not self._enabled:
+            return False
+        try:
+            return bool(self._stream.isatty())
+        except (AttributeError, ValueError, OSError):
+            # A stream that exists but can't answer isatty() (e.g.
+            # already closed) is treated as non-interactive -- the
+            # safer of the two assumptions, since \r-based redraws
+            # garble non-terminal output but plain lines are always
+            # readable either way.
+            return False
 
     def iteration_step(self, current: int, total: int) -> None:
-        self._iteration_bar.step(current, total)
+        if self._enabled:
+            self._iteration_bar.step(current, total)
 
     def render_step(self, current: int, total: int) -> None:
-        self._render_bar.step(current, total)
+        if self._enabled:
+            self._render_bar.step(current, total)
 
     @contextmanager
     def phase(self, label: str):
+        if not self._enabled:
+            yield
+            return
+
         stop = threading.Event()
         thread = threading.Thread(target=self._spin, args=(label, stop), daemon=True)
         thread.start()
@@ -140,7 +177,6 @@ class CLIProgressReporter:
         shown = False
         frames = "|/-\\"
         i = 0
-        is_tty = self._stream.isatty()
         last_line = 0.0
         while not stop.is_set():
             elapsed = time.perf_counter() - start
@@ -151,7 +187,7 @@ class CLIProgressReporter:
                     stop.wait(0.05)
                     continue
             now = time.perf_counter()
-            if is_tty:
+            if self._is_tty:
                 print(
                     f"\r{label} {frames[i % len(frames)]} ({now - start:.0f}s)",
                     end="", file=self._stream, flush=True,
@@ -163,5 +199,5 @@ class CLIProgressReporter:
                     print(f"{label} ({now - start:.0f}s elapsed)", file=self._stream, flush=True)
                     last_line = now
                 stop.wait(0.2)
-        if shown and is_tty:
+        if shown and self._is_tty:
             print(file=self._stream)
