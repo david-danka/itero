@@ -1,3 +1,5 @@
+from contextlib import contextmanager
+
 import plotly.graph_objects as go
 import pytest
 
@@ -111,6 +113,59 @@ def test_saves_to_disk(tmp_path):
 
     assert out.exists()
     assert out.stat().st_size > 0
+
+
+def test_calls_render_step_once_per_trace():
+    calls = []
+
+    class _RecordingReporter:
+        def iteration_step(self, current, total):
+            pass
+
+        def render_step(self, current, total):
+            calls.append((current, total))
+
+        @contextmanager
+        def phase(self, label):
+            yield
+
+    seq = _sequence(iterations=4)  # 5 polygons total
+    render_polygons(seq, (4, 4), show=False, progress=_RecordingReporter())
+
+    assert calls == [(1, 5), (2, 5), (3, 5), (4, 5), (5, 5)]
+
+
+def test_wraps_write_image_in_a_progress_phase(tmp_path):
+    """write_image() is a single opaque call with no way to report a
+    percentage -- it must be wrapped in progress.phase(...) rather than
+    a step-based callback."""
+    pytest.importorskip("kaleido")
+    phases = []
+
+    class _RecordingReporter:
+        def iteration_step(self, current, total):
+            pass
+
+        def render_step(self, current, total):
+            pass
+
+        @contextmanager
+        def phase(self, label):
+            phases.append(label)
+            yield
+
+    out = tmp_path / "polygon.png"
+    render_polygons(
+        _sequence(), (4, 4), show=False, save_path=str(out), progress=_RecordingReporter(),
+    )
+
+    assert phases == ["Exporting image..."]
+
+
+def test_progress_defaults_to_a_silent_no_op():
+    # No progress argument given -- must not raise, matches direct/
+    # library callers that never pass one.
+    render_polygons(_sequence(), (4, 4), show=False)
 
 
 def test_wraps_save_failure_without_kaleido(monkeypatch):

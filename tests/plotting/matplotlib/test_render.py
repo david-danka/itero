@@ -1,3 +1,5 @@
+from contextlib import contextmanager
+
 import matplotlib.pyplot as plt
 import pytest
 
@@ -89,6 +91,40 @@ def test_saves_to_disk(tmp_path):
 
     assert out.exists()
     assert out.stat().st_size > 0
+    plt.close(fig)
+
+
+def test_wraps_savefig_in_a_progress_phase(tmp_path):
+    """savefig() is a single opaque call with no way to report a
+    percentage -- it must be wrapped in progress.phase(...) rather than
+    a step-based callback."""
+    phases = []
+
+    class _RecordingReporter:
+        def iteration_step(self, current, total):
+            pass
+
+        def render_step(self, current, total):
+            pass
+
+        @contextmanager
+        def phase(self, label):
+            phases.append(label)
+            yield
+
+    out = tmp_path / "polygon.png"
+    fig = render_polygons(
+        _sequence(), (4, 4), show=False, save_path=str(out), progress=_RecordingReporter(),
+    )
+
+    assert phases == ["Saving figure..."]
+    plt.close(fig)
+
+
+def test_progress_defaults_to_a_silent_no_op():
+    # No progress argument given -- must not raise, matches direct/
+    # library callers that never pass one.
+    fig = render_polygons(_sequence(), (4, 4), show=False)
     plt.close(fig)
 
 

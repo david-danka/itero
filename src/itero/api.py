@@ -88,6 +88,7 @@ def plot_polygons(
     show: bool = True,
     save_path: str | None = None,
     backend: str = "matplotlib",
+    progress=None,
 ):
     """Generate and render an iterative polygon sequence.
 
@@ -116,6 +117,11 @@ def plot_polygons(
         save_path: Optional path to save the rendered figure to disk.
         backend: Rendering backend to use — one of "matplotlib" or
             "plotly".
+        progress: Optional progress reporter (see itero._progress),
+            threaded through to both iterate_polygon and the backend's
+            render_polygons. Defaults to a silent no-op -- only cli.py
+            passes a real, visible one; direct/library callers (e.g. a
+            Streamlit app) see no console output unless they opt in.
 
     Returns:
         The backend's native figure object (a Matplotlib Figure or a
@@ -139,6 +145,7 @@ def plot_polygons(
         polygon,
         t=ratio,
         iterations=iterations,
+        progress=progress,
     )
 
     return renderer.render_polygons(
@@ -149,4 +156,5 @@ def plot_polygons(
         alpha=alpha,
         show=show,
         save_path=save_path,
+        progress=progress,
     )

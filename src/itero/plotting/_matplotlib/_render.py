@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 from matplotlib.pyplot import Figure
 
+from itero._progress import NullProgressReporter
 from itero._validate_params import validate_params
 from itero.core import PolygonSequence
 from itero.exceptions import (
@@ -37,6 +38,7 @@ def render_polygons(
     alpha: float = 1.0,
     show: bool = True,
     save_path: str | None = None,
+    progress=None,
 ) -> Figure:
     """Render a PolygonSequence as an overlapping series of line plots.
 
@@ -84,6 +86,11 @@ def render_polygons(
         save_path: File path to save the figure. The format is inferred
             from the extension (e.g. '.png', '.svg', '.pdf'). If None,
             the figure is not saved. Defaults to None.
+        progress: Optional progress reporter (see itero._progress).
+            savefig() is a single opaque call with no way to report a
+            percentage, so it's wrapped in progress.phase(...) rather
+            than a step-based callback. Defaults to a silent no-op --
+            only cli.py passes a real, visible one.
 
     Returns:
         The populated Matplotlib Figure.
@@ -93,6 +100,8 @@ def render_polygons(
         >>> sequence = iterate_polygon(polygon, t=0.1, iterations=200)
         >>> render_polygons(sequence, (8, 8), color='indigo', alpha=0.15)
     """
+    if progress is None:
+        progress = NullProgressReporter()
 
     validate_figure_size(figure_size)
     validate_color_spec(cmap, color)
@@ -132,7 +141,8 @@ def render_polygons(
 
         if save_path:
             try:
-                fig.savefig(save_path, bbox_inches='tight', pad_inches=0)
+                with progress.phase("Saving figure..."):
+                    fig.savefig(save_path, bbox_inches='tight', pad_inches=0)
             except (OSError, ValueError) as e:
                 raise RenderingError(f"Could not save figure to '{save_path}': {e}") from e
         if show:

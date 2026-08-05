@@ -7,6 +7,7 @@ dispatch to either backend uniformly.
 
 import plotly.graph_objects as go
 
+from itero._progress import NullProgressReporter
 from itero._validate_params import validate_params
 from itero.core import PolygonSequence
 from itero.exceptions import (
@@ -39,6 +40,7 @@ def render_polygons(
     show: bool = True,
     save_path: str | None = None,
     dpi: float = 100.0,
+    progress=None,
 ) -> go.Figure:
     """Render a PolygonSequence as an overlapping series of Plotly line traces.
 
@@ -75,10 +77,18 @@ def render_polygons(
             figure_size * dpi must be at least 10px per side -- Plotly's
             own width/height floor -- or this raises InvalidFigureSizeError
             rather than letting Plotly's raw ValueError through.
+        progress: Optional progress reporter (see itero._progress). The
+            per-polygon trace-building loop reports a real percentage
+            via progress.render_step(current, total); write_image() is
+            a single opaque call with no way to report one, so it's
+            wrapped in progress.phase(...) instead. Defaults to a
+            silent no-op -- only cli.py passes a real, visible one.
 
     Returns:
         The populated Plotly Figure.
     """
+    if progress is None:
+        progress = NullProgressReporter()
 
     validate_figure_size(figure_size)
     validate_plotly_figure_size(figure_size, dpi)
@@ -111,7 +121,8 @@ def render_polygons(
 
     all_x: list[float] = []
     all_y: list[float] = []
-    for poly, poly_color in zip(polygons, colors):
+    total = len(polygons)
+    for i, (poly, poly_color) in enumerate(zip(polygons, colors)):
         xs, ys = zip(*polygon_to_line(poly))
         all_x.extend(xs)
         all_y.extend(ys)
@@ -124,6 +135,7 @@ def render_polygons(
                 showlegend=False,
             )
         )
+        progress.render_step(i + 1, total)
 
     # Set the axis range explicitly rather than relying on the browser's
     # client-side autorange, which is unreliable when combined with
@@ -140,7 +152,8 @@ def render_polygons(
 
     if save_path:
         try:
-            fig.write_image(save_path)
+            with progress.phase("Exporting image..."):
+                fig.write_image(save_path)
         except (OSError, ValueError) as e:
             raise RenderingError(f"Could not save figure to '{save_path}': {e}") from e
     if show:
