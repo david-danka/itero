@@ -38,6 +38,38 @@ def test_rejects_invalid_iterations(iterations):
         iterate_polygon(polygon, t=0.2, iterations=iterations)
 
 
+def test_rejects_a_memory_prohibitive_request(monkeypatch):
+    from itero.exceptions import ExcessiveMemoryUsageError
+
+    monkeypatch.setattr(
+        "itero.core._validate.available_memory_bytes", lambda: 1 * 1024**3
+    )
+    polygon = Polygon.regular(1000)
+
+    with pytest.raises(ExcessiveMemoryUsageError):
+        iterate_polygon(polygon, t=0.001, iterations=100_000_000)
+
+
+def test_calls_progress_reporter_once_per_step():
+    calls = []
+
+    class _RecordingReporter:
+        def iteration_step(self, current, total):
+            calls.append((current, total))
+
+    polygon = Polygon.regular(4)
+    iterate_polygon(polygon, t=0.2, iterations=5, progress=_RecordingReporter())
+
+    assert calls == [(1, 5), (2, 5), (3, 5), (4, 5), (5, 5)]
+
+
+def test_progress_defaults_to_a_silent_no_op():
+    polygon = Polygon.regular(4)
+    # No progress argument given -- must not raise, matches direct/library
+    # callers (and the whole existing test suite) that never pass one.
+    iterate_polygon(polygon, t=0.2, iterations=5)
+
+
 @given(regular_polygon_st, ratio_st, iterations_st)
 def test_iterate_length(polygon, ratio, iterations):
     seq = iterate_polygon(polygon, ratio, iterations)

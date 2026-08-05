@@ -13,8 +13,9 @@ Typical usage:
 
 import math
 
+from itero._progress import NullProgressReporter
 from itero.core._primitives import Point, Polygon, PolygonSequence
-from itero.core._validate import validate_iterations, validate_ratio
+from itero.core._validate import validate_iterations, validate_ratio, validate_vertex_budget
 
 
 def _transform_polygon(polygon: Polygon, t: float) -> Polygon:
@@ -73,14 +74,26 @@ def shrink_factor(n: int, t: float) -> float:
     return math.sqrt(1 - 2*t*(1-t)*(1 - math.cos(angle)))
 
 
-def iterate_polygon(polygon: Polygon, t: float, iterations: int,) -> PolygonSequence:
+def iterate_polygon(
+    polygon: Polygon,
+    t: float,
+    iterations: int,
+    progress=None,
+) -> PolygonSequence:
     """Repeatedly transform a polygon, collecting each intermediate state.
- 
+
     Applies transform_polygon in a chain, using each result as the input
     for the next step. The original polygon is included as the first
     element of the sequence, so the total number of polygons returned
     is iterations + 1.
- 
+
+    Every intermediate polygon is kept in memory at once, so
+    num_sides * iterations is checked against a memory-derived budget
+    before the loop starts (see validate_vertex_budget) -- a backstop
+    against exhausting memory outright, which no amount of patience or
+    progress feedback can help with once it happens. Slowness itself is
+    not guarded against here; that's what progress is for.
+
     Args:
         polygon: The initial polygon to transform.
         t: Interpolation ratio passed to each transform_polygon call.
@@ -88,24 +101,32 @@ def iterate_polygon(polygon: Polygon, t: float, iterations: int,) -> PolygonSequ
         iterations: Number of transformation steps to apply. Must be
             greater than or equal to 0. An input of 0 returns a sequence
             containing only the original polygon.
- 
+        progress: Optional progress reporter (see itero._progress).
+            Called once per step via progress.iteration_step(current,
+            total). Defaults to a silent no-op -- only cli.py passes a
+            real, visible one.
+
     Returns:
         A PolygonSequence containing the original polygon followed by
         each successive transformation, along with the parameters used
         to produce it.
- 
+
     Example:
         >>> triangle = Polygon.regular(3)
         >>> sequence = iterate_polygon(triangle, t=1/3, iterations=500)
         >>> len(sequence)
         501
     """
+    if progress is None:
+        progress = NullProgressReporter()
 
     validate_ratio(t)
     validate_iterations(iterations)
+    validate_vertex_budget(len(polygon), iterations)
 
     polygons = [polygon]
-    for _ in range(iterations):
+    for i in range(iterations):
         polygons.append(_transform_polygon(polygons[-1], t))
-    
+        progress.iteration_step(i + 1, iterations)
+
     return PolygonSequence(polygons, t, iterations)
