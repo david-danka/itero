@@ -81,39 +81,27 @@ def test_cmap_and_color_together_errors(monkeypatch, capsys):
     assert "not both" in capsys.readouterr().err
 
 
-def test_num_sides_over_max_errors(monkeypatch, capsys):
-    monkeypatch.setattr(
-        cli_module.sys, "argv",
-        ["itero", "--num-sides", str(cli_module.MAX_SIDES + 1)],
-    )
+def test_num_sides_and_iterations_have_no_upper_bound_at_the_parser_level():
+    """Regression: --num-sides/--iterations used to be rejected above a
+    flat MAX_SIDES/MAX_ITERATIONS, independent of whether the request
+    was actually expensive. That guardrail is gone -- a large request
+    is the caller's call to make; CLIProgressReporter gives visibility
+    into a slow run instead of silently blocking or refusing outright,
+    and iterate_polygon's own memory-derived budget (see
+    core._validate.validate_vertex_budget) is the only remaining
+    backstop, for the genuinely-different reason that a request which
+    would exhaust memory outright can't be helped by patience alone."""
+    args = build_parser().parse_args(["--num-sides", "50000", "--iterations", "50000"])
 
-    with pytest.raises(SystemExit) as exc_info:
-        cli()
-
-    assert exc_info.value.code == 2
-    assert "--num-sides" in capsys.readouterr().err
-
-
-def test_iterations_over_max_errors(monkeypatch, capsys):
-    monkeypatch.setattr(
-        cli_module.sys, "argv",
-        ["itero", "--iterations", str(cli_module.MAX_ITERATIONS + 1)],
-    )
-
-    with pytest.raises(SystemExit) as exc_info:
-        cli()
-
-    assert exc_info.value.code == 2
-    assert "--iterations" in capsys.readouterr().err
+    assert args.num_sides == 50000
+    assert args.iterations == 50000
 
 
-def test_auto_iterations_over_max_errors(monkeypatch, capsys):
-    """Regression: omitting --iterations (the documented default --
-    'computed automatically to fill the figure') used to bypass
-    MAX_ITERATIONS entirely, since the CLI-side check only looked at an
-    explicitly-passed args.iterations. A small --ratio combined with a
-    large --num-sides made the auto-computed count blow up into the
-    hundreds of millions with nothing to catch it."""
+def test_auto_iterations_for_a_memory_prohibitive_request_errors_cleanly(monkeypatch, capsys):
+    """The old MAX_ITERATIONS regression case (a small --ratio combined
+    with a large --num-sides, auto-computing into the hundreds of
+    millions) is still rejected -- just by the memory budget now,
+    inside iterate_polygon, rather than a flat iteration-count cap."""
     monkeypatch.setattr(
         cli_module.sys, "argv",
         ["itero", "--num-sides", "1000", "--ratio", "0.001", "--no-show", "--save-path", "x.png"],
@@ -123,19 +111,40 @@ def test_auto_iterations_over_max_errors(monkeypatch, capsys):
         cli()
 
     assert exc_info.value.code == 1
-    assert "Auto-computed iterations" in capsys.readouterr().err
+    assert "total vertices" in capsys.readouterr().err
+
+
+def test_previously_wrongly_blocked_case_now_works(monkeypatch, tmp_path):
+    """The exact case that motivated dropping the flat iteration cap:
+    a small num_sides with a tiny ratio auto-computes a five-figure
+    iteration count that used to be rejected by MAX_ITERATIONS purely
+    because it looked at iterations alone, ignoring how cheap num_sides=6
+    actually makes it. This must now succeed end-to-end."""
+    out = tmp_path / "small_dense.png"
+    monkeypatch.setattr(
+        cli_module.sys, "argv",
+        [
+            "itero", "--num-sides", "6", "--ratio", "0.001",
+            "--no-show", "--save-path", str(out),
+        ],
+    )
+
+    cli()
+
+    assert out.exists()
+    assert out.stat().st_size > 0
 
 
 @pytest.mark.parametrize("num_sides,ratio", [(0, 0.2), (1, 0.2), (2, 0.5)])
 def test_num_sides_below_minimum_errors_cleanly_with_auto_iterations(num_sides, ratio, monkeypatch, capsys):
-    """Regression: cli.py resolves the auto-computed iteration count
-    (via resolve_iterations) before ever calling plot_polygons/
-    Polygon.regular, which is the only thing that used to validate
-    num_sides on this path. num_sides=0/1, or 2 at ratio=0.5, crashed
-    with a raw, uncaught ZeroDivisionError or ValueError instead of the
-    clean InvalidNumSidesError num_sides=2 at the default ratio already
-    got (that one happened to reach Polygon.regular before any math
-    degenerated)."""
+    """Regression: with iterations=None (the auto-compute default),
+    num_sides used to reach the auto-compute branch's pixel/log math
+    before anything validated it. num_sides=0/1, or 2 at ratio=0.5,
+    crashed with a raw, uncaught ZeroDivisionError or ValueError
+    instead of the clean InvalidNumSidesError num_sides=2 at the
+    default ratio already got (that one happened to reach
+    Polygon.regular before any math degenerated). Now covered by
+    plot_polygons' own @validate_params("num_sides", ...)."""
     monkeypatch.setattr(
         cli_module.sys, "argv",
         [
@@ -149,28 +158,6 @@ def test_num_sides_below_minimum_errors_cleanly_with_auto_iterations(num_sides, 
 
     assert exc_info.value.code == 1
     assert "num_sides must be greater than or equal to 3" in capsys.readouterr().err
-
-
-def test_num_sides_at_max_is_allowed(monkeypatch):
-    """MAX_SIDES itself must not be rejected -- only values strictly above
-    it. --iterations is given explicitly here to isolate that from the
-    separate auto-computed-iterations guardrail: at num_sides=MAX_SIDES,
-    the default --ratio auto-computes well over MAX_ITERATIONS on its
-    own, which is a real (and correct) rejection, just not the one this
-    test is about."""
-    calls = []
-    monkeypatch.setattr(cli_module, "plot_polygons", lambda **kwargs: calls.append(kwargs))
-    monkeypatch.setattr(
-        cli_module.sys, "argv",
-        [
-            "itero", "--num-sides", str(cli_module.MAX_SIDES), "--iterations", "10",
-            "--no-show", "--save-path", "x.png",
-        ],
-    )
-
-    cli()
-
-    assert len(calls) == 1
 
 
 def test_polygon_iter_error_exits_1_with_clean_message(monkeypatch, capsys):
@@ -221,6 +208,7 @@ def test_calls_plot_polygons_with_mapped_arguments(monkeypatch):
     assert call["show"] is False  # --no-show inverted
     assert call["save_path"] == "x.png"
     assert call["backend"] == "plotly"
+    assert isinstance(call["progress"], cli_module.CLIProgressReporter)
 
 
 # ---------------------------------------------------------------------------

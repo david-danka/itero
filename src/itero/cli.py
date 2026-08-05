@@ -12,12 +12,9 @@ Typical usage:
 import argparse
 import sys
 
-from itero.exceptions import InvalidIterationsError, PolygonIterError
-from itero.api import plot_polygons, resolve_iterations
-
-
-MAX_ITERATIONS = 10_000
-MAX_SIDES = 1_000
+from itero._progress import CLIProgressReporter
+from itero.exceptions import PolygonIterError
+from itero.api import plot_polygons
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -135,34 +132,21 @@ def cli() -> None:
             "can be provided, not both."
         )
 
-    if args.num_sides > MAX_SIDES:
-        parser.error(f"--num-sides must be <= {MAX_SIDES}, got {args.num_sides}.")
-
-    if args.iterations is not None and args.iterations > MAX_ITERATIONS:
-        parser.error(f"--iterations must be <= {MAX_ITERATIONS}, got {args.iterations}.")
-
     try:
-        # args.iterations is only checked against MAX_ITERATIONS above
-        # when the user supplies it explicitly -- that check is skipped
-        # for the (documented, common) default of omitting --iterations
-        # entirely. Resolving it here, before plot_polygons ever builds a
-        # single polygon, applies the same guardrail to the auto-computed
-        # count: a small --ratio combined with a large --num-sides can
-        # make it explode into the hundreds of millions.
-        iterations = resolve_iterations(
-            args.num_sides, args.ratio, args.iterations, args.figure_size, args.backend,
-        )
-        if iterations > MAX_ITERATIONS:
-            raise InvalidIterationsError(
-                f"Auto-computed iterations ({iterations}) exceeds the "
-                f"maximum of {MAX_ITERATIONS}. Pass an explicit "
-                "--iterations to override this limit."
-            )
-
+        # No upper bound on num_sides/iterations here -- a large or even
+        # astronomically large request is the caller's call to make, not
+        # something to silently reject. Two things replace the old flat
+        # cap: CLIProgressReporter gives visibility into a slow run
+        # (rather than either blocking silently or refusing outright),
+        # and iterate_polygon's own memory-derived budget (see
+        # core._validate.validate_vertex_budget) is the last-resort
+        # backstop against a request that would exhaust memory outright
+        # -- a risk no amount of patience or progress feedback helps
+        # with, so it's still enforced, just not here.
         plot_polygons(
             num_sides=args.num_sides,
             ratio=args.ratio,
-            iterations=iterations,
+            iterations=args.iterations,
             figure_size=args.figure_size,
             cmap=args.cmap,
             color=args.color,
@@ -170,6 +154,7 @@ def cli() -> None:
             show=not args.no_show,
             save_path=args.save_path,
             backend=args.backend,
+            progress=CLIProgressReporter(),
         )
 
     except PolygonIterError as e:
