@@ -214,3 +214,25 @@ def test_empty_sequence_does_not_leak_a_figure():
         render_polygons(empty, (4, 4), show=False)
 
     assert set(plt.get_fignums()) == before
+
+
+def test_keyboard_interrupt_mid_render_does_not_leak_a_figure(monkeypatch):
+    """Regression: the cleanup wrapper used `except Exception`, which
+    does not catch KeyboardInterrupt/SystemExit (neither derives from
+    Exception) -- so hitting Ctrl-C anywhere inside the render body,
+    an entirely ordinary way for this branch to run, skipped
+    plt.close(fig) and leaked a figure. `except BaseException` (still
+    followed by a bare `raise`, so nothing is suppressed) fixes this
+    without changing what the interrupt itself does."""
+    import itero.plotting._matplotlib._render as render_module
+
+    def _interrupt(*args, **kwargs):
+        raise KeyboardInterrupt()
+
+    monkeypatch.setattr(render_module, "distances_from_centroid", _interrupt)
+    before = set(plt.get_fignums())
+
+    with pytest.raises(KeyboardInterrupt):
+        render_polygons(_sequence(), (4, 4), show=False)
+
+    assert set(plt.get_fignums()) == before

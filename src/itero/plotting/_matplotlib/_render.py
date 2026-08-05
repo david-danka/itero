@@ -147,14 +147,21 @@ def render_polygons(
                 raise RenderingError(f"Could not save figure to '{save_path}': {e}") from e
         if show:
             plt.show()
-    except Exception:
+    except BaseException:
         # Close before propagating: this figure is never reaching the
         # caller, so it would otherwise be orphaned in Matplotlib's
         # global figure registry forever. Deliberately unconditional --
         # not scoped to specific known exception types (e.g. the
         # savefig() failure above, now just one case among many) -- so a
-        # failure discovered anywhere in this block, known or not,
-        # can't leak a figure.
+        # failure discovered anywhere in this block, known or not, can't
+        # leak a figure. BaseException, not Exception: a bare `raise`
+        # right after doesn't suppress or swallow anything -- the
+        # interrupt still propagates exactly as it would otherwise, this
+        # only adds a cleanup step first. `except Exception` would skip
+        # that cleanup for KeyboardInterrupt/SystemExit specifically,
+        # since neither derives from Exception -- and hitting Ctrl-C
+        # mid-render is a completely ordinary way for this branch to run,
+        # not a corner case.
         plt.close(fig)
         raise
 
